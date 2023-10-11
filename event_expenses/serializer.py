@@ -6,7 +6,6 @@ class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
         fields = '__all__'
-        read_only_fields = ('correo_electronico',) 
 
 class EventoSerializer(serializers.ModelSerializer):
     class Meta:

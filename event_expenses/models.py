@@ -17,6 +17,7 @@ class Evento(models.Model):
         return self.nombre
 
 class Usuario(models.Model):
+    
     correo_electronico = models.EmailField(primary_key=True)
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)

@@ -18,12 +18,13 @@ class Evento(models.Model):
 
 class Usuario(models.Model):
     
-    correo_electronico = models.EmailField(primary_key=True)
+    correo_electronico = models.EmailField(primary_key=True, unique=True)
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
     apodo = models.CharField(max_length=100)
     foto = models.CharField(max_length=100) 
     id_evento = models.ForeignKey(Evento, on_delete=models.CASCADE, null=True, blank=True)
+    activo = models.BooleanField(default=True, editable=False)
 
     def __str__(self):
         return self.apodo
@@ -33,7 +34,7 @@ class Contactos(models.Model):
     correo_electronico_contacto = models.ForeignKey(Usuario, on_delete=models.CASCADE)
 
     def __str__(self):
-        return self.correo_electronico_contacto
+        return self.correo_electronico_contacto.correo_electronico
 
 class Actividades(models.Model):
     id = models.AutoField(primary_key=True)

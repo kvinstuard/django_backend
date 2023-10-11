@@ -8,6 +8,13 @@ class UsuarioViews(viewsets.ModelViewSet):
     queryset = Usuario.objects.all()
 
 
+#class UsuarioDetailView(generics.RetrieveAPIView):
+#    queryset = Usuario.objects.all()
+#    serializer_class = UsuarioSerializer
+#    lookup_field = 'correo_electronico' 
+#Tryng to get the user by email
+
+
 class ContactoViews(viewsets.ModelViewSet):
     serializer_class = ContactoSerializer
     queryset = Contactos.objects.all()

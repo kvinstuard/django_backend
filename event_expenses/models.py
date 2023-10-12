@@ -24,7 +24,7 @@ class Usuario(models.Model):
     apodo = models.CharField(max_length=100)
     foto = models.CharField(max_length=100) 
     id_evento = models.ForeignKey(Evento, on_delete=models.CASCADE, null=True, blank=True)
-    activo = models.BooleanField(default=True, editable=False)
+    #activo = models.BooleanField(default=True, editable=False)
 
     def __str__(self):
         return self.apodo

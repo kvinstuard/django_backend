@@ -5,12 +5,14 @@ class Evento(models.Model):
     nombre = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True)
     tipo_opciones = (
-        ('CENA', 'CENA'),
-        ('FIESTA', 'FIESTA'),
         ('VIAJE', 'VIAJE'),
+        ('HOGAR', 'HOGAR'),
+        ('PAREJA', 'PAREJA'),
+        ('COMIDA', 'COMIDA'),
+        ('OTRO', 'OTRO'),
     )
     tipo = models.CharField(max_length=10, choices=tipo_opciones)
-    foto = models.CharField(max_length=250)
+    foto = models.CharField(max_length=250) #modificar por un campo que admita imagenes
     id_usuario = models.ForeignKey('Usuario', on_delete=models.CASCADE)
 
     def __str__(self):
@@ -22,8 +24,8 @@ class Usuario(models.Model):
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
     apodo = models.CharField(max_length=100)
-    foto = models.CharField(max_length=100) 
-    id_evento = models.ForeignKey(Evento, on_delete=models.CASCADE, null=True, blank=True)
+    foto = models.CharField(max_length=100) #cambiar por foto
+    id_evento = models.ForeignKey(Evento, on_delete=models.SET_NULL, null=True, blank=True)
     #activo = models.BooleanField(default=True, editable=False)
 
     def __str__(self):

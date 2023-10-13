@@ -1,7 +1,10 @@
 from rest_framework import serializers
 from .models import Evento, Usuario, Contactos, Actividades, ParticipantesEventoActividad
 
-#Combirtiendo los modelos en datos de python 
+# --------------------------------------------------------------------------------
+#Convirtiendo los modelos en datos de python 
+# --------------------------------------------------------------------------------
+
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario

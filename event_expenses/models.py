@@ -30,11 +30,14 @@ class Usuario(models.Model):
         return self.apodo
 
 class Contactos(models.Model):
-    id = models.AutoField(primary_key=True)
-    correo_electronico_contacto = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    correo_usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, null=True, related_name="contactos_usuario")
+    correo_electronico_contacto = models.ForeignKey(Usuario, on_delete=models.CASCADE, null=True, related_name="contactos_contacto")
 
     def __str__(self):
         return self.correo_electronico_contacto.correo_electronico
+    
+    class Meta:
+        unique_together = (("correo_usuario", "correo_electronico_contacto"),)
 
 class Actividades(models.Model):
     id = models.AutoField(primary_key=True)

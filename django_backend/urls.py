@@ -16,9 +16,19 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from event_expenses import views
 
+# ================================================================================
 #Enseñandole al proyecto la ruta de las urls
+# ================================================================================
+# --------------------------------------------------------------------------------
+# Ruta ejemplo= http://localhost:8000/event_expenses/api/v1/usuario
+# *** PARA VER MAS EJEMPLOS CONSULTAR EL ARCHIVO urls_ejemplos.txt ***
+# --------------------------------------------------------------------------------
+
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('event_expenses/', include('event_expenses.urls'))
+    path('event_expenses/', include('event_expenses.urls')),
+    path("agregar/contacto/<str:correo_usuario>/<str:correo_contacto>", views.agregar_contacto, name="agregar_contacto"),
+    path("eliminar/contacto/<str:correo_usuario>/<str:correo_contacto>", views.eliminar_contacto, name="eliminar_contacto"),
 ]

@@ -17,12 +17,6 @@ router.register(r'actividades', views.ActividadesViews, 'actividades' )
 router.register(r'evento', views.EventoViews, 'evento' )
 router.register(r'participantesEventoActividad', views.ParticipantesViews, 'participantes' )
 
-# --------------------------------------------------------------------------------
-# Gestión de contactos
-# --------------------------------------------------------------------------------
-gestion_contactos = routers.DefaultRouter() 
-router.register(r'crear/contacto', views.agregar_contacto, 'crear/contacto')
-
 # --------------------------------------------------------------------------------   
 # Generando rutas
 # --------------------------------------------------------------------------------
@@ -32,6 +26,4 @@ router.register(r'crear/contacto', views.agregar_contacto, 'crear/contacto')
 
 urlpatterns = [
     path("api/v1/", include(router.urls)),
-    #path("/gestion_contactos/", include(gestion_contactos.urls)),
-    #path("/create/contact"),   
 ]

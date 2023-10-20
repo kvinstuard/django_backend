@@ -21,6 +21,7 @@ class Evento(models.Model):
 class Usuario(models.Model):
     
     correo_electronico = models.EmailField(primary_key=True, unique=True)
+    password = models.CharField(max_length=100)#cambiar
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
     apodo = models.CharField(max_length=100)

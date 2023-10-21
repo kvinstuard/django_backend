@@ -1,4 +1,4 @@
-from django.urls import path, include
+from django.urls import path, include, re_path
 from rest_framework import routers
 from event_expenses import views
 
@@ -25,4 +25,7 @@ router.register(r'participantesEventoActividad', views.ParticipantesViews, 'part
 
 urlpatterns = [
     path("api/v1/", include(router.urls)),
+    re_path("test_token", views.TestToken),
+    re_path("usuario/login", views.UsuarioLoginViews),
+    re_path("usuario/registrar", views.UsuarioSingUpViews)
 ]

@@ -176,3 +176,36 @@ def eliminar_contacto(request):
     # Finalmente, si pasa todas las pruebas, se elimina el contacto.
     contacto.delete()
     return Response({"error":True, "mensaje":"El usuario-contacto fue eliminado éxitosamente!"}, status=status.HTTP_200_OK)
+
+#experimental
+@api_view(['POST'])
+def UsuarioSingUpViews(request):
+    serializer = UsuarioSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        #user = User.objects.get(username=request.data['correo_electronico'])#username en comillas
+        #user.set_password(request.data['password'])
+        #user.save()
+        #token = Token.objects.create(user=user)
+        user = Usuario.objects.create(
+            correo_electronico=request.data['correo_electronico'],
+            password=request.data['password'],
+            nombres=request.data['nombres'],
+            apellidos=request.data['apellidos'],
+            apodo=request.data['apodo'],
+            foto=request.data['foto']
+            
+        )
+        token = Token.objects.get_or_create(user=user)
+        return Response({"token": token.key, "user": serializer.data})
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def UsuarioLoginViews(request):
+    return Response({})
+
+@api_view(['GET'])
+def TestToken(request):
+    return Response({})
+##

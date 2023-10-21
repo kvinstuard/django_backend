@@ -36,6 +36,10 @@ def crear_usuario(request):
             username = request.data["apodo"],
             is_active = True,
         )
+        # Creamos su Token
+        token = Token.objects.create(
+            user=user
+        )
         # Asociamos dicho usuario (User) a la relación Usuario.
         # Se debe actualizar porque ya se crea automaticamente el Usuario asociado
         # a la relación "user".

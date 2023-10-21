@@ -1,8 +1,8 @@
 from rest_framework import viewsets, status, generics
 from rest_framework.response import Response
 from django.http import HttpResponse
-from .serializer import UsuarioSerializer, ContactoSerializer, EventoSerializer, ActividadesSerializer, ParticipantesSerializer
-from .models import Usuario, Contactos, Evento, Actividades, ParticipantesEventoActividad
+from .serializer import UsuarioSerializer, ContactoSerializer, EventoSerializer, ActividadesSerializer, ParticipantesSerializer, ContactoSerializerDetallado
+from .models import Usuario, Contactos, Evento, Actividades, ParticipantesEventoActividad, User
 from rest_framework.decorators import api_view
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken, AuthTokenSerializer
@@ -16,19 +16,38 @@ from django.db.models.signals import post_save
 # Todas las vistas acá seran para crear y ver los modelos
 # --------------------------------------------------------------------------------
 
-class UsuarioViews(viewsets.ModelViewSet):
-    serializer_class = UsuarioSerializer
-    queryset = Usuario.objects.all()
+# Método para crear un usuario.
+# Primero crea un usuario de la relación "User" y luego se le asocian los argumentos
+# que falten a la relación "Usuario"
 
-#class UsuarioDetailView(generics.RetrieveAPIView):
-#    queryset = Usuario.objects.all()
-#    serializer_class = UsuarioSerializer
-#    lookup_field = 'email' 
-#Tryng to get the user by email
-
-
+@api_view(['GET','POST']) # Es un decorador que me sirve para renderizar en pantalla la vista basada en función.
+def crear_usuario(request):
+    if request.method == 'GET':
+        usuarios = Usuario.objects.all()
+        serializer = UsuarioSerializer(usuarios, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    elif request.method == 'POST':
+        # Creamos el usuario (User)
+        user = User.objects.create(
+            email = request.data["email"],
+            first_name = request.data["nombres"],
+            last_name = request.data["apellidos"],
+            password = request.data["password"],
+            username = request.data["apodo"],
+            is_active = True,
+        )
+        # Asociamos dicho usuario (User) a la relación Usuario.
+        # Se debe actualizar porque ya se crea automaticamente el Usuario asociado
+        # a la relación "user".
+        usuario = Usuario.objects.get(
+            user = user
+        )
+        usuario.foto = request.data["foto"]
+        serializer = UsuarioSerializer(usuario, many=False)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
 class ContactoViews(viewsets.ModelViewSet):
-    serializer_class = ContactoSerializer
+    serializer_class = ContactoSerializerDetallado
     queryset = Contactos.objects.all()
 
 class EventoViews(viewsets.ModelViewSet):
@@ -43,27 +62,6 @@ class ParticipantesViews(viewsets.ModelViewSet):
     serializer_class = ParticipantesSerializer
     queryset = ParticipantesEventoActividad.objects.all()
 
-# creacion o autenticacion del token
-class CreateTokenView(ObtainAuthToken):
-    """Create auth token"""
-    serializer_class = AuthTokenSerializer
-    renderer_classes = api_settings.DEFAULT_RENDERER_CLASSES
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(
-            data=request.data, context={'request': request})
-        if serializer.is_valid():
-            user = serializer.validated_data['user']
-            token, created = Token.objects.get_or_create(user=user)
-            return Response({
-                'error': False,
-                'token': token.key,
-                'email': user.email,
-                'name': user.nombre,
-            })
-        else:
-            return Response({"error": True}, status=status.HTTP_200_OK)
-
 # --------------------------------------------------------------------------------
 # Registro y Login
 # --------------------------------------------------------------------------------
@@ -73,21 +71,15 @@ class CreateTokenView(ObtainAuthToken):
 def login_user(request):
     print("user:",request.data) 
     try:
-        usuario = Usuario.objects.get(email=request.data["email"], password=request.data["password"])
-    except Usuario.DoesNotExist:
+        user = User.objects.get(email=request.data["email"], password=request.data["password"])
+    except User.DoesNotExist:
         return Response({"error": True, "error_cause": 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
-    # token = Token.objects.get(user=usuario)
+    token = Token.objects.get(user=user)
     reqdata = {
-        "token": "testToken 48712847124sj81%324",
-        "nickname": usuario.apodo
+        "token": token.key,
+        "nickname": user.username
     }
     return Response({"answer": True, "description": reqdata }, status=status.HTTP_200_OK)
-
-# creacion del token que permitira al usuario acceder a su url respectiva
-@receiver(post_save, sender=settings.AUTH_USER_MODEL)
-def create_auth_token(sender, instance=None, created=False, **kwargs):
-    if created:
-        Token.objects.create(user=instance)
 
 # --------------------------------------------------------------------------------
 # Gestión de contactos
@@ -95,29 +87,31 @@ def create_auth_token(sender, instance=None, created=False, **kwargs):
 
 # Para agregar un contacto
 
-@api_view(['GET','POST']) # Es un decorador que me sirve para renderizar en pantalla la vista basada en función.
-def agregar_contacto(request, correo_usuario, correo_contacto):
+@api_view(['POST']) # Es un decorador que me sirve para renderizar en pantalla la vista basada en función.
+def agregar_contacto(request):
+    correo_usuario = request.data["correo_usuario"]
+    correo_contacto = request.data["correo_contacto"]
     # Determinamos si el usuario existe
     try:
-        usuario = Usuario.objects.get(email=correo_usuario)
-    except Usuario.DoesNotExist:
+        user = User.objects.get(email=correo_usuario)
+    except User.DoesNotExist:
         return Response({"error":True, "error_causa":"El usuario no existe!"}, status=status.HTTP_404_NOT_FOUND)
     
     # Determinamos si el contacto existe.
     try:
-        usuario = Usuario.objects.get(email=correo_contacto)
-    except Usuario.DoesNotExist:
+        contact = User.objects.get(email=correo_contacto)
+    except User.DoesNotExist:
         return Response({"error":True, "error_causa":"El usuario-contacto no existe!"}, status=status.HTTP_404_NOT_FOUND)
 
     # Determinamos si el usuario tiene agregado el contacto.
     # Si no existe lo crea y lo agrega.
     try:
-        contacto = Contactos.objects.get(correo_usuario=correo_usuario, correo_electronico_contacto=correo_contacto)
+        contacto = Contactos.objects.get(usuario=user, contacto=contact)
         return Response({"error":True, "mensaje":"El usuario ya tiene agregado el contacto!"}, status=status.HTTP_400_BAD_REQUEST)
     except Contactos.DoesNotExist:
         contacto_nuevo =    {
-            'correo_usuario':correo_usuario,
-            'correo_electronico_contacto': correo_contacto   
+            'usuario': user.id,
+            'contacto': contact.id
         }
         serializer = ContactoSerializer(data=contacto_nuevo)
         if serializer.is_valid():
@@ -127,22 +121,30 @@ def agregar_contacto(request, correo_usuario, correo_contacto):
             serializer_response = ContactoSerializer(contacto)
             return Response(serializer_response.data, status=status.HTTP_201_CREATED)
         else:
-            return Response({"error":True, "mensaje":serializer.error_messages}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error":True, "mensaje":serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 # Para eliminar un contacto
 
-@api_view(['GET','POST'])
-def eliminar_contacto(request, correo_usuario, correo_contacto):
+@api_view(['POST'])
+def eliminar_contacto(request):
+    correo_usuario = request.data["correo_usuario"]
+    correo_contacto = request.data["correo_contacto"]
     # Determinamos si el usuario existe
     try:
-        usuario = Usuario.objects.get(email=correo_usuario)
-    except Usuario.DoesNotExist:
+        user = User.objects.get(email=correo_usuario)
+    except User.DoesNotExist:
         return Response({"error":True, "error_causa":"El usuario no existe!"}, status=status.HTTP_404_NOT_FOUND)
     
+    # Determinamos si el contacto existe.
+    try:
+        contact = User.objects.get(email=correo_contacto)
+    except User.DoesNotExist:
+        return Response({"error":True, "error_causa":"El usuario-contacto no existe!"}, status=status.HTTP_404_NOT_FOUND)
+
     # Determinamos si el usuario tiene agregado el contacto.
     # Si no lo tiene agregado arroja un error.
     try:
-        contacto = Contactos.objects.get(correo_usuario=correo_usuario, correo_electronico_contacto=correo_contacto)
+        contacto = Contactos.objects.get(usuario=user, contacto=contact)
     except Contactos.DoesNotExist:
         return Response({"error":True, "mensaje":"El usuario-contacto no está agregado en la lista de contactos del usuario!"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -154,7 +156,7 @@ def eliminar_contacto(request, correo_usuario, correo_contacto):
     """
     # consultamos la tabla "Evento", para ver si el contacto creó un evento.
     try:
-        evento = Evento.objects.get(id_usuario=correo_contacto)
+        evento = Evento.objects.get(id_usuario=contact)
         return Response({"error":True, "mensaje":"El contacto tiene un evento creado; evento: '{nombre_evento}'".format(nombre_evento=evento.nombre)}, status=status.HTTP_400_BAD_REQUEST)
     except Evento.DoesNotExist:
         print("El contacto no tiene un evento creado!")
@@ -162,7 +164,7 @@ def eliminar_contacto(request, correo_usuario, correo_contacto):
     # consultamos la tabla "ParticipantesEventoActividad", para ver si el contacto
     # ha sido agregado a un evento.
     try:
-        participantes_eventos = ParticipantesEventoActividad.objects.get(id_participante=contacto.id)
+        participantes_eventos = ParticipantesEventoActividad.objects.get(id_participante=contacto)
         return Response({"error":True, "mensaje":"El contacto está asociado a una actividad de un evento; actividad: '{nombre_actividad}', evento: '{nombre_evento}'".format(nombre_actividad=participantes_eventos.id_actividad.descripcion, nombre_evento=participantes_eventos.id_evento.nombre)}, status=status.HTTP_400_BAD_REQUEST)
     except ParticipantesEventoActividad.DoesNotExist:
         print("El contacto no está agregado a alguna actividad de un evento!")

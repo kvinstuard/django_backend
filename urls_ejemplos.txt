@@ -1,12 +1,13 @@
 --==============================================================================
 -- URLs que solo funcionan desde la API de Django-rest para crear y ver objetos
 -- de los modelos
+-- Se recomienda descargar la herramienta Postman para probar
 --==============================================================================
 --------------------------------------------------------------------------------
 -- Crear y ver usuarios
 --------------------------------------------------------------------------------
 Para ver usuarios:
-http://127.0.0.1:8000/event_expenses/api/v1/usuario/
+http://127.0.0.1:8000/crear/usuario/
 
 Para crear usuarios:
 Metodo: POST
@@ -58,14 +59,24 @@ Para logearse:
 NOTA: Estas URLs quedan pendiente de mejora, ya que hay que evitar pasar los correos en la URL.
 --------------------------------------------------------------------------------
 -- agregar o añadir contacto
--- agregar/contacto/<str:correo_usuario>/<str:correo_contacto>
+-- agregar/contacto/
 --------------------------------------------------------------------------------
 Ejemplo de uso:
-http://127.0.0.1:8000/agregar/contacto/aa@test.com/aa2@test.com
+http://127.0.0.1:8000/agregar/contacto/
+
+{
+    "correo_usuario": "a@a.com",
+    "correo_contacto": "d@a.com"
+}
 
 --------------------------------------------------------------------------------
 -- agregar o añadir contacto
--- agregar/contacto/<str:correo_usuario>/<str:correo_contacto>
+-- agregar/contacto/
 --------------------------------------------------------------------------------
 Ejemplo de uso:
-http://127.0.0.1:8000/eliminar/contacto/aa@test.com/aa2@test.com
+http://127.0.0.1:8000/eliminar/contacto/
+
+{
+    "correo_usuario": "a@a.com",
+    "correo_contacto": "d@a.com"
+}

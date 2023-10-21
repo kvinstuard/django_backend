@@ -11,7 +11,6 @@ from event_expenses import views
 # --------------------------------------------------------------------------------
 router = routers.DefaultRouter()
 
-router.register(r'usuario', views.UsuarioViews, 'usuario' )
 router.register(r'contactos', views.ContactoViews, 'contactos' )
 router.register(r'actividades', views.ActividadesViews, 'actividades' )
 router.register(r'evento', views.EventoViews, 'evento' )

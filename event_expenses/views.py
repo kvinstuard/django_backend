@@ -1,9 +1,15 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, generics
 from rest_framework.response import Response
 from django.http import HttpResponse
 from .serializer import UsuarioSerializer, ContactoSerializer, EventoSerializer, ActividadesSerializer, ParticipantesSerializer
 from .models import Usuario, Contactos, Evento, Actividades, ParticipantesEventoActividad
 from rest_framework.decorators import api_view
+from rest_framework.authtoken.models import Token
+from rest_framework.authtoken.views import ObtainAuthToken, AuthTokenSerializer
+from rest_framework.settings import api_settings
+from django.dispatch import receiver
+from django.conf import settings
+from django.db.models.signals import post_save
 
 # --------------------------------------------------------------------------------
 # Creando el CRUD
@@ -17,7 +23,7 @@ class UsuarioViews(viewsets.ModelViewSet):
 #class UsuarioDetailView(generics.RetrieveAPIView):
 #    queryset = Usuario.objects.all()
 #    serializer_class = UsuarioSerializer
-#    lookup_field = 'correo_electronico' 
+#    lookup_field = 'email' 
 #Tryng to get the user by email
 
 
@@ -37,6 +43,52 @@ class ParticipantesViews(viewsets.ModelViewSet):
     serializer_class = ParticipantesSerializer
     queryset = ParticipantesEventoActividad.objects.all()
 
+# creacion o autenticacion del token
+class CreateTokenView(ObtainAuthToken):
+    """Create auth token"""
+    serializer_class = AuthTokenSerializer
+    renderer_classes = api_settings.DEFAULT_RENDERER_CLASSES
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(
+            data=request.data, context={'request': request})
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+            token, created = Token.objects.get_or_create(user=user)
+            return Response({
+                'error': False,
+                'token': token.key,
+                'email': user.email,
+                'name': user.nombre,
+            })
+        else:
+            return Response({"error": True}, status=status.HTTP_200_OK)
+
+# --------------------------------------------------------------------------------
+# Registro y Login
+# --------------------------------------------------------------------------------
+
+# Método para que un usuario se logee
+@api_view(['POST'])
+def login_user(request):
+    print("user:",request.data) 
+    try:
+        usuario = Usuario.objects.get(email=request.data["email"], password=request.data["password"])
+    except Usuario.DoesNotExist:
+        return Response({"error": True, "error_cause": 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
+    # token = Token.objects.get(user=usuario)
+    reqdata = {
+        "token": "testToken 48712847124sj81%324",
+        "nickname": usuario.apodo
+    }
+    return Response({"answer": True, "description": reqdata }, status=status.HTTP_200_OK)
+
+# creacion del token que permitira al usuario acceder a su url respectiva
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
+def create_auth_token(sender, instance=None, created=False, **kwargs):
+    if created:
+        Token.objects.create(user=instance)
+
 # --------------------------------------------------------------------------------
 # Gestión de contactos
 # --------------------------------------------------------------------------------
@@ -47,13 +99,13 @@ class ParticipantesViews(viewsets.ModelViewSet):
 def agregar_contacto(request, correo_usuario, correo_contacto):
     # Determinamos si el usuario existe
     try:
-        usuario = Usuario.objects.get(correo_electronico=correo_usuario)
+        usuario = Usuario.objects.get(email=correo_usuario)
     except Usuario.DoesNotExist:
         return Response({"error":True, "error_causa":"El usuario no existe!"}, status=status.HTTP_404_NOT_FOUND)
     
     # Determinamos si el contacto existe.
     try:
-        usuario = Usuario.objects.get(correo_electronico=correo_contacto)
+        usuario = Usuario.objects.get(email=correo_contacto)
     except Usuario.DoesNotExist:
         return Response({"error":True, "error_causa":"El usuario-contacto no existe!"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -83,7 +135,7 @@ def agregar_contacto(request, correo_usuario, correo_contacto):
 def eliminar_contacto(request, correo_usuario, correo_contacto):
     # Determinamos si el usuario existe
     try:
-        usuario = Usuario.objects.get(correo_electronico=correo_usuario)
+        usuario = Usuario.objects.get(email=correo_usuario)
     except Usuario.DoesNotExist:
         return Response({"error":True, "error_causa":"El usuario no existe!"}, status=status.HTTP_404_NOT_FOUND)
     

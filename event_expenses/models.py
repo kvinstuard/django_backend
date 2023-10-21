@@ -1,4 +1,9 @@
 from django.db import models
+from django.conf import settings
+from rest_framework.authtoken.models import Token
+from django.dispatch import receiver
+from django.db.models.signals import post_save
+from django.contrib.auth.models import User
 
 class Evento(models.Model):
     id = models.AutoField(primary_key=True)
@@ -19,10 +24,10 @@ class Evento(models.Model):
         return self.nombre
 
 class Usuario(models.Model):
-    
-    correo_electronico = models.EmailField(primary_key=True, unique=True)
+    email = models.EmailField(primary_key=True, unique=True)
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
+    password = models.CharField(max_length=300, default="dummy_password")
     apodo = models.CharField(max_length=100)
     foto = models.CharField(max_length=100) #cambiar por foto
     id_evento = models.ForeignKey(Evento, on_delete=models.SET_NULL, null=True, blank=True)
@@ -30,6 +35,17 @@ class Usuario(models.Model):
 
     def __str__(self):
         return self.apodo
+    
+# ------------------------------------------------------------------------
+# Esto hace que se cree un token automaticamente cuando se crea un usuario
+# ------------------------------------------------------------------------
+
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
+def create_auth_token(sender, instance=None, created=False, **kwargs):
+    if created:
+        Token.objects.create(user=instance)
+
+# ------------------------------------------------------------------------
 
 class Contactos(models.Model):
     correo_usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, null=True, related_name="contactos_usuario")

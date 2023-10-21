@@ -27,8 +27,14 @@ from event_expenses import views
 # --------------------------------------------------------------------------------
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('event_expenses/', include('event_expenses.urls')),
-    path("agregar/contacto/<str:correo_usuario>/<str:correo_contacto>", views.agregar_contacto, name="agregar_contacto"),
-    path("eliminar/contacto/<str:correo_usuario>/<str:correo_contacto>", views.eliminar_contacto, name="eliminar_contacto"),
+    path('admin/', 
+         admin.site.urls),
+    path('event_expenses/', 
+         include('event_expenses.urls')),
+    path("agregar/contacto/<str:correo_usuario>/<str:correo_contacto>", 
+         views.agregar_contacto, name="agregar_contacto"),
+    path("eliminar/contacto/<str:correo_usuario>/<str:correo_contacto>", 
+         views.eliminar_contacto, name="eliminar_contacto"),
+    path('login/user/', 
+         views.login_user, name="login_user"),
 ]

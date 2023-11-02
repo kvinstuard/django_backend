@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status, generics
 from rest_framework.response import Response
 from django.http import HttpResponse
-from .serializer import UsuarioSerializer, ContactoSerializer, EventoSerializer, ActividadesSerializer, ParticipantesSerializer, ContactoSerializerDetallado
+from .serializer import UsuarioSerializer, ContactoSerializer, EventoSerializer, ActividadesSerializer, ParticipantesSerializer, ContactoSerializerDetallado, UserSerializer
 from .models import Usuario, Contactos, Evento, Actividades, ParticipantesEventoActividad, User
 from rest_framework.decorators import api_view
 from rest_framework.authtoken.models import Token
@@ -10,6 +10,8 @@ from rest_framework.settings import api_settings
 from django.dispatch import receiver
 from django.conf import settings
 from django.db.models.signals import post_save
+from django.core import serializers
+import json
 
 # --------------------------------------------------------------------------------
 # Creando el CRUD
@@ -50,6 +52,38 @@ def crear_usuario(request):
         serializer = UsuarioSerializer(usuario, many=False)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
+# Método para modificar un usuario
+# La solicitud debe ser de tipo "PUT"
+
+@api_view(['PUT']) # Es un decorador que me sirve para renderizar en pantalla la vista basada en función.
+def modificar_usuario(request):
+    if request.method == 'PUT':
+        try:
+            user_obj = User.objects.get(email=request.data["email"])
+        except User.DoesNotExist:
+            return Response({"error": True, "error_cause": 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            usuario_obj = Usuario.objects.get(user=user_obj)
+        except Usuario.DoesNotExist:
+            return Response({"error": True, "error_cause": 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Actualiza los campos del usuario 'user_obj' con los datos de la solicitud
+        user_obj.email = request.data["email"]
+        user_obj.first_name = request.data["nombres"]
+        user_obj.last_name = request.data["apellidos"]
+        user_obj.password = request.data["password"]
+        user_obj.username = request.data["apodo"]
+        user_obj.save()
+        
+        # Actualiza los campos del usuario 'usuario_obj' con los datos de la solicitud
+        usuario_obj.foto = request.data["foto"]
+        usuario_obj.save()
+
+        return Response({"error": False, "description": 'Datos del usuario actualizados!'}, status=status.HTTP_200_OK)
+    else:
+        return Response({"error": True, "error_cause": 'Invalid request method!'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    
 class ContactoViews(viewsets.ModelViewSet):
     serializer_class = ContactoSerializerDetallado
     queryset = Contactos.objects.all()
@@ -79,9 +113,17 @@ def login_user(request):
     except User.DoesNotExist:
         return Response({"error": True, "error_cause": 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
     token = Token.objects.get(user=user)
+    try:
+        usuario = Usuario.objects.get(user=user)
+    except Usuario.DoesNotExist:
+        return Response({"error": True, "error_cause": 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Serializa el objeto 'usuario'
+    usuario_serializer = UsuarioSerializer(usuario, many=False)
+
     reqdata = {
         "token": token.key,
-        "nickname": user.username
+        "user_details": usuario_serializer.data,
     }
     return Response({"answer": True, "description": reqdata }, status=status.HTTP_200_OK)
 
@@ -177,7 +219,11 @@ def eliminar_contacto(request):
     contacto.delete()
     return Response({"error":True, "mensaje":"El usuario-contacto fue eliminado éxitosamente!"}, status=status.HTTP_200_OK)
 
-#experimental
+
+# --------------------------------------------------------------------------------
+# Experimental
+# --------------------------------------------------------------------------------
+
 @api_view(['POST'])
 def UsuarioSingUpViews(request):
     serializer = UsuarioSerializer(data=request.data)

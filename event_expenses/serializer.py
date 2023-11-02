@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Evento, Usuario, Contactos, Actividades, ParticipantesEventoActividad
+from django.contrib.auth.models import User
 
 # --------------------------------------------------------------------------------
 #Convirtiendo los modelos en datos de python 
@@ -8,7 +9,9 @@ from .models import Evento, Usuario, Contactos, Actividades, ParticipantesEvento
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
-        fields = '__all__'
+        fields = ['correo_electronico', 'password','nombres','apellidos','apodo','foto']
+
+
 
 class EventoSerializer(serializers.ModelSerializer):
     class Meta:

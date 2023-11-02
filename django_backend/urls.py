@@ -33,6 +33,8 @@ urlpatterns = [
          include('event_expenses.urls')),
     path('crear/usuario/', 
          views.crear_usuario, name="crear_usuario"),
+    path('modificar/usuario/', 
+         views.modificar_usuario, name="modificar_usuario"),
     path("agregar/contacto/", 
          views.agregar_contacto, name="agregar_contacto"),
     path("eliminar/contacto/", 

@@ -1,0 +1,14 @@
+--==============================================================================
+-- Estos ejemplos serán por si queremos borrar desde el shell de Django registros
+-- para acceder al shell hacemos: python manage.py shell
+--==============================================================================
+--------------------------------------------------------------------------------
+-- Borrar todos los contactos
+--------------------------------------------------------------------------------
+from event_expenses.models import Contactos                                      
+Contactos.objects.all().delete()
+--------------------------------------------------------------------------------
+-- Borrar todos los Usuarios
+--------------------------------------------------------------------------------
+from event_expenses.models import Usuario                                      
+Usuario.objects.all().delete()

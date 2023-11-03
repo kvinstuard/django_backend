@@ -15,8 +15,34 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+from event_expenses import views
+
+# ================================================================================
+#Enseñandole al proyecto la ruta de las urls
+# ================================================================================
+# --------------------------------------------------------------------------------
+# Ruta ejemplo= http://localhost:8000/event_expenses/api/v1/usuario
+# *** PARA VER MAS EJEMPLOS CONSULTAR EL ARCHIVO urls_ejemplos.txt ***
+# --------------------------------------------------------------------------------
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('admin/', 
+         admin.site.urls),
+    path('event_expenses/', 
+         include('event_expenses.urls')),
+    path('crear/usuario/', 
+         views.crear_usuario, name="crear_usuario"),
+    path('modificar/usuario/', 
+         views.modificar_usuario, name="modificar_usuario"),
+    path('listar/contactos/', 
+         views.listar_contactos, name="listar_contactos"),
+    path('listar/contactos/evento/', 
+         views.listar_contactos_evento, name="listar_contactos_evento"),
+    path("agregar/contacto/", 
+         views.agregar_contacto, name="agregar_contacto"),
+    path("eliminar/contacto/", 
+         views.eliminar_contacto, name="eliminar_contacto"),
+    path('login/user/', 
+         views.login_user, name="login_user"),
 ]

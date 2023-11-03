@@ -174,7 +174,7 @@ def agregar_contacto(request):
     # Si no existe lo crea y lo agrega.
     try:
         contacto = Contactos.objects.get(usuario=user, contacto=contact)
-        return Response({"error":True, "mensaje":"El usuario ya tiene agregado el contacto!"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error":True, "error_cause":"Contact already exists!"}, status=status.HTTP_400_BAD_REQUEST)
     except Contactos.DoesNotExist:
         contacto_nuevo =    {
             'usuario': user.id,
@@ -188,7 +188,7 @@ def agregar_contacto(request):
             serializer_response = ContactoSerializer(contacto)
             return Response(serializer_response.data, status=status.HTTP_201_CREATED)
         else:
-            return Response({"error":True, "mensaje":serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error":True, "error_cause":serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 # Para eliminar un contacto
 
@@ -213,7 +213,7 @@ def eliminar_contacto(request):
     try:
         contacto = Contactos.objects.get(usuario=user, contacto=contact)
     except Contactos.DoesNotExist:
-        return Response({"error":True, "mensaje":"El usuario-contacto no está agregado en la lista de contactos del usuario!"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error":True, "error_cause":"Contact not found!"}, status=status.HTTP_404_NOT_FOUND)
 
     # Determinamos si el usuario tiene un evento asociado
     """
@@ -224,7 +224,7 @@ def eliminar_contacto(request):
     # consultamos la tabla "Evento", para ver si el contacto creó un evento.
     try:
         evento = Evento.objects.get(id_usuario=contact)
-        return Response({"error":True, "mensaje":"El contacto tiene un evento creado; evento: '{nombre_evento}'".format(nombre_evento=evento.nombre)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error":True, "error_cause":"Contact is associated with an event; event: '{nombre_evento}'".format(nombre_evento=evento.nombre)}, status=status.HTTP_400_BAD_REQUEST)
     except Evento.DoesNotExist:
         print("El contacto no tiene un evento creado!")
 
@@ -232,13 +232,13 @@ def eliminar_contacto(request):
     # ha sido agregado a un evento.
     try:
         participantes_eventos = ParticipantesEventoActividad.objects.get(id_participante=contacto)
-        return Response({"error":True, "mensaje":"El contacto está asociado a una actividad de un evento; actividad: '{nombre_actividad}', evento: '{nombre_evento}'".format(nombre_actividad=participantes_eventos.id_actividad.descripcion, nombre_evento=participantes_eventos.id_evento.nombre)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error":True, "error_cause":"Contact is associated with an event's activity; activity: '{nombre_actividad}', evento: '{nombre_evento}'".format(nombre_actividad=participantes_eventos.id_actividad.descripcion, nombre_evento=participantes_eventos.id_evento.nombre)}, status=status.HTTP_400_BAD_REQUEST)
     except ParticipantesEventoActividad.DoesNotExist:
         print("El contacto no está agregado a alguna actividad de un evento!")
     
     # Finalmente, si pasa todas las pruebas, se elimina el contacto.
     contacto.delete()
-    return Response({"error":False, "mensaje":"El usuario-contacto fue eliminado éxitosamente!"}, status=status.HTTP_200_OK)
+    return Response({"error":False, "message":"User-contact deleted successfully!"}, status=status.HTTP_200_OK)
 
 # Listar contactos de un usuario especifico
 

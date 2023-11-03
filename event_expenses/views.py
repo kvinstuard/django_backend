@@ -56,7 +56,7 @@ def crear_usuario(request):
 # Método para modificar un usuario
 # La solicitud debe ser de tipo "PUT"
 
-@api_view(['PUT']) # Es un decorador que me sirve para renderizar en pantalla la vista basada en función.
+@api_view(['PUT', 'POST']) # Es un decorador que me sirve para renderizar en pantalla la vista basada en función.
 def modificar_usuario(request):
     if request.method == 'PUT':
         try:
@@ -69,11 +69,11 @@ def modificar_usuario(request):
             return Response({"error": True, "error_cause": 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
         
         # Actualiza los campos del usuario 'user_obj' con los datos de la solicitud
-        user_obj.email = request.data["email"]
-        user_obj.first_name = request.data["nombres"]
+        # user_obj.email = request.data["email"]
+        user_obj.first_name = request.data["nombres"] 
         user_obj.last_name = request.data["apellidos"]
         user_obj.password = request.data["password"]
-        user_obj.username = request.data["apodo"]
+        # user_obj.username = request.data["apodo"] 
         user_obj.save()
         
         # Actualiza los campos del usuario 'usuario_obj' con los datos de la solicitud
@@ -81,6 +81,25 @@ def modificar_usuario(request):
         usuario_obj.save()
 
         return Response({"error": False, "description": 'Datos del usuario actualizados!'}, status=status.HTTP_200_OK)
+    elif request.method == 'POST':
+        try:
+            user = User.objects.get(email=request.data["email"])
+        except User.DoesNotExist:
+            return Response({"error": True, "error_cause": 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            usuario = Usuario.objects.get(user=user)
+        except Usuario.DoesNotExist:
+            return Response({"error": True, "error_cause": 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
+        user_data = {
+            "email": user.email,
+            "nombres": user.first_name,
+            "apellidos": user.last_name,
+            "password": user.password,
+            "apodo": user.username,
+            "foto": usuario.foto,
+            "is_active": user.is_active,
+        }
+        return Response(user_data, status=status.HTTP_200_OK)
     else:
         return Response({"error": True, "error_cause": 'Invalid request method!'}, status=status.HTTP_400_BAD_REQUEST)
     
@@ -239,11 +258,15 @@ def listar_contactos(request):
     # Ahora extraemos los datos de cada contacto
     lista_contactos = []
     for contacto in contactos:
+        try:
+            usuario = Usuario.objects.get(user=contacto.contacto)
+        except Usuario.DoesNotExist:
+            return Response({"error": True, "error_cause": 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
         contact = {
             "email": contacto.contacto.email,
-            "nombres": contacto.contacto.first_name,
-            "apellidos": contacto.contacto.last_name,
+            "nombre": contacto.contacto.first_name,
             "apodo": contacto.contacto.username,
+            "avatar": usuario.foto,
         } 
         lista_contactos.append(contact)
     print("lista_contactos:", lista_contactos)

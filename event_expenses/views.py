@@ -81,7 +81,7 @@ def modificar_usuario(request):
         usuario_obj.foto = request.data["foto"]
         usuario_obj.save()
 
-        return Response({"error": False, "description": 'Datos del usuario actualizados!'}, status=status.HTTP_200_OK)
+        return Response({"error": False, "description": 'User data upgraded!'}, status=status.HTTP_200_OK)
     elif request.method == 'POST':
         try:
             user = User.objects.get(email=request.data["email"])
@@ -162,13 +162,13 @@ def agregar_contacto(request):
     try:
         user = User.objects.get(email=correo_usuario)
     except User.DoesNotExist:
-        return Response({"error":True, "error_causa":"El usuario no existe!"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error":True, "error_cause":"User does not exist!"}, status=status.HTTP_404_NOT_FOUND)
     
     # Determinamos si el contacto existe.
     try:
         contact = User.objects.get(email=correo_contacto)
     except User.DoesNotExist:
-        return Response({"error":True, "error_causa":"El usuario-contacto no existe!"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error":True, "error_cause":"User-contact not found!"}, status=status.HTTP_404_NOT_FOUND)
 
     # Determinamos si el usuario tiene agregado el contacto.
     # Si no existe lo crea y lo agrega.
@@ -200,13 +200,13 @@ def eliminar_contacto(request):
     try:
         user = User.objects.get(email=correo_usuario)
     except User.DoesNotExist:
-        return Response({"error":True, "error_causa":"El usuario no existe!"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error":True, "error_cause":"User does not exist!"}, status=status.HTTP_404_NOT_FOUND)
     
     # Determinamos si el contacto existe.
     try:
         contact = User.objects.get(email=correo_contacto)
     except User.DoesNotExist:
-        return Response({"error":True, "error_causa":"El usuario-contacto no existe!"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error":True, "error_cause":"User-contact not found!"}, status=status.HTTP_404_NOT_FOUND)
 
     # Determinamos si el usuario tiene agregado el contacto.
     # Si no lo tiene agregado arroja un error.
@@ -248,13 +248,13 @@ def listar_contactos(request):
     try:
         user = User.objects.get(email=request.data["email"])
     except User.DoesNotExist:
-        return Response({"error":True, "error_causa":"El usuario no existe!"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error":True, "error_cause":"User does not exist!"}, status=status.HTTP_404_NOT_FOUND)
 
     # Buscamos los eventos creados por el usuario
     try:
         contactos = Contactos.objects.filter(usuario=user) 
     except Contactos.DoesNotExist:
-        return Response({ "contactos" : [], "message": "El usuario no tiene contactos!"  }, status=status.HTTP_200_OK)
+        return Response({ "contactos" : [], "message": "User hasn't contacts yet"  }, status=status.HTTP_200_OK)
     
     # Ahora extraemos los datos de cada contacto
     lista_contactos = []
@@ -284,13 +284,13 @@ def listar_contactos_evento(request):
     try:
         user = User.objects.get(email=request.data["email"])
     except User.DoesNotExist:
-        return Response({"error":True, "error_causa":"El usuario no existe!"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error":True, "error_cause":"User does not exist!"}, status=status.HTTP_404_NOT_FOUND)
 
     # Buscamos los eventos creados por el usuario
     try:
         eventos = Evento.objects.filter(id_usuario=user) 
     except Evento.DoesNotExist:
-        return Response({ "contactos" : [], "message": "El usuario no tiene eventos creados!"  }, status=status.HTTP_200_OK)
+        return Response({ "contactos" : [], "message": "User hasn't created events yet!"  }, status=status.HTTP_200_OK)
     
     # Ahora extraemos los datos de cada contacto
     print("eventos:", eventos)

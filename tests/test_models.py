@@ -2,6 +2,12 @@ import pytest
 from django.contrib.auth.models import User
 from event_expenses.models import Evento, Usuario, Contactos, Actividades, ParticipantesEventoActividad
 
+# ----------------------------------------------------------------------
+# Pruebas unitarias de Modelos:
+# ----------------------------------------------------------------------
+
+
+
 @pytest.mark.django_db
 def test_crear_evento():
     evento = Evento.objects.create(

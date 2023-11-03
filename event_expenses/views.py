@@ -12,6 +12,7 @@ from django.conf import settings
 from django.db.models.signals import post_save
 from django.core import serializers
 import json
+import random
 
 # --------------------------------------------------------------------------------
 # Creando el CRUD
@@ -217,9 +218,82 @@ def eliminar_contacto(request):
     
     # Finalmente, si pasa todas las pruebas, se elimina el contacto.
     contacto.delete()
-    return Response({"error":True, "mensaje":"El usuario-contacto fue eliminado éxitosamente!"}, status=status.HTTP_200_OK)
+    return Response({"error":False, "mensaje":"El usuario-contacto fue eliminado éxitosamente!"}, status=status.HTTP_200_OK)
 
+# Listar contactos de un usuario especifico
 
+@api_view(['POST'])
+def listar_contactos(request):
+    # Determinamos si el usuario existe
+    try:
+        user = User.objects.get(email=request.data["email"])
+    except User.DoesNotExist:
+        return Response({"error":True, "error_causa":"El usuario no existe!"}, status=status.HTTP_404_NOT_FOUND)
+
+    # Buscamos los eventos creados por el usuario
+    try:
+        contactos = Contactos.objects.filter(usuario=user) 
+    except Contactos.DoesNotExist:
+        return Response({ "contactos" : [], "message": "El usuario no tiene contactos!"  }, status=status.HTTP_200_OK)
+    
+    # Ahora extraemos los datos de cada contacto
+    lista_contactos = []
+    for contacto in contactos:
+        contact = {
+            "email": contacto.contacto.email,
+            "nombres": contacto.contacto.first_name,
+            "apellidos": contacto.contacto.last_name,
+            "apodo": contacto.contacto.username,
+        } 
+        lista_contactos.append(contact)
+    print("lista_contactos:", lista_contactos)
+    contactos_data = { "contactos" : lista_contactos, "message": "Ok!"  }
+
+    return Response(contactos_data, status=status.HTTP_200_OK)
+    
+
+# Listar contactos de un usuario especifico por evento
+
+@api_view(['POST'])
+def listar_contactos_evento(request):
+    # Determinamos si el usuario existe
+    try:
+        user = User.objects.get(email=request.data["email"])
+    except User.DoesNotExist:
+        return Response({"error":True, "error_causa":"El usuario no existe!"}, status=status.HTTP_404_NOT_FOUND)
+
+    # Buscamos los eventos creados por el usuario
+    try:
+        eventos = Evento.objects.filter(id_usuario=user) 
+    except Evento.DoesNotExist:
+        return Response({ "contactos" : [], "message": "El usuario no tiene eventos creados!"  }, status=status.HTTP_200_OK)
+    
+    # Ahora extraemos los datos de cada contacto
+    print("eventos:", eventos)
+    lista_contactos = []
+    for evento in eventos:
+        print("evento:", evento)
+        # Buscamos el/los eventos creados por el usuario
+        # a los que esté asociado el contacto
+        try:
+            eventosActividades = ParticipantesEventoActividad.objects.filter(id_evento=evento)
+        except ParticipantesEventoActividad.DoesNotExist:
+            print("No hay contactos asociados al evento:", evento.nombre)
+        print("eventosActividades:", eventosActividades)        
+        for eventoActividad in eventosActividades:
+            contact = {
+                "email": eventoActividad.id_participante.contacto.email,
+                "nombre": eventoActividad.id_participante.contacto.first_name,
+                "evento": eventoActividad.id_evento.nombre,
+                "actividad": eventoActividad.id_actividad.descripcion,
+                "saldo": eventoActividad.valor_participacion,
+            } 
+            lista_contactos.append(contact)
+    print("lista_contactos:", lista_contactos)
+    contactos_data = { "contactos" : lista_contactos, "message": "Ok!"  }
+
+    return Response(contactos_data, status=status.HTTP_200_OK)
+    
 # --------------------------------------------------------------------------------
 # Experimental
 # --------------------------------------------------------------------------------

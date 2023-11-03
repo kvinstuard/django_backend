@@ -74,6 +74,7 @@ def modificar_usuario(request):
         user_obj.last_name = request.data["apellidos"]
         user_obj.password = request.data["password"]
         # user_obj.username = request.data["apodo"] 
+        user_obj.is_active = request.data["is_active"]
         user_obj.save()
         
         # Actualiza los campos del usuario 'usuario_obj' con los datos de la solicitud

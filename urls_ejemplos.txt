@@ -54,6 +54,31 @@ Para logearse:
 }
 
 --==============================================================================
+-- Gestión de usuarios
+--==============================================================================
+--------------------------------------------------------------------------------
+-- http://127.0.0.1:8000/modificar/usuario/
+--------------------------------------------------------------------------------
+para actualizar los datos del usuario
+método: PUT
+{
+    "email": "b3@a.com",
+    "nombres": "admin 2",
+    "apellidos": "Mario bros",
+    "password": "ctzFXgSu",
+    "foto": null,
+    "is_active": true
+}
+
+NOTA: el email es necesario para identificar al usuario.
+
+para ver los datos del usuario
+método: POST
+{
+    "email": "b3@a.com"
+}
+
+--==============================================================================
 -- Gestión de contactos
 --==============================================================================
 NOTA: Estas URLs quedan pendiente de mejora, ya que hay que evitar pasar los correos en la URL.

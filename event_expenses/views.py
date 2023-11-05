@@ -50,6 +50,7 @@ def crear_usuario(request):
             user = user
         )
         usuario.foto = request.data["foto"]
+        usuario.save()
         serializer = UsuarioSerializer(usuario, many=False)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
@@ -73,7 +74,7 @@ def modificar_usuario(request):
         user_obj.first_name = request.data["nombres"] 
         user_obj.last_name = request.data["apellidos"]
         user_obj.password = request.data["password"]
-        user_obj.username = request.data["apodo"] 
+        # user_obj.username = request.data["apodo"] 
         user_obj.is_active = request.data["is_active"]
         user_obj.save()
         

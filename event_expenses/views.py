@@ -50,6 +50,7 @@ def crear_usuario(request):
             user = user
         )
         usuario.foto = request.data["foto"]
+        usuario.save()
         serializer = UsuarioSerializer(usuario, many=False)
         return Response(serializer.data, status=status.HTTP_200_OK)
     

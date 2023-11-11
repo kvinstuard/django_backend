@@ -140,12 +140,29 @@ metodo: POST
 Headers:
     Authorization: Token cf87095dadcbf5b1156324039e52abdae1032989
 Body:
-    {
-        "nombre": "Juegaton DBZ",
-        "descripcion": "Para jugar DBZ budokai tenkaichi 3 version latino",
-        "tipo": "VIAJE",
-        "foto": "https://pbs.twimg.com/profile_images/910343871/JuegatonNegro_400x400.jpg"
-    }
+{
+    "nombre": "Juegaton DBZ",
+    "descripcion": "Para jugar DBZ budokai tenkaichi 3 version latino",
+    "tipo": "VIAJE",
+    "foto": "https://pbs.twimg.com/profile_images/910343871/JuegatonNegro_400x400.jpg"
+}
+
+--------------------------------------------------------------------------------
+-- actualizar un evento
+--------------------------------------------------------------------------------
+URL: http://127.0.0.1:8000/update/event/
+metodo: PUT
+Headers:
+    Authorization: Token cf87095dadcbf5b1156324039e52abdae1032989
+Body:
+{
+    "nombre": "Juegaton HALO CE",
+    "nombre_antiguo": "Jugaton HALO CE",
+    "descripcion": "update",
+    "tipo": "OTRO",
+    "foto": "No tiene"
+}
+
 --------------------------------------------------------------------------------
 -- ver eventos y actividades en los que el usuario participa.
 --------------------------------------------------------------------------------
@@ -173,3 +190,42 @@ headers:
 --==============================================================================
 NOTAS:
 un creador puede ponerse a si mismo como participante de una actividad y aportar algo.
+--------------------------------------------------------------------------------
+-- crear una actividad
+--------------------------------------------------------------------------------
+URL: http://127.0.0.1:8000/create/activity/
+metodo: POST
+Headers:
+    Authorization: Token cf87095dadcbf5b1156324039e52abdae1032989
+Body:
+{
+    "descripcion": "Tarea pa la casa",
+    "valor": 150000,
+    "nombre_evento": "evento"
+}
+
+--------------------------------------------------------------------------------
+-- borrar una actividad
+--------------------------------------------------------------------------------
+URL: http://127.0.0.1:8000/delete/activity/
+metodo: POST
+Headers:
+    Authorization: Token cf87095dadcbf5b1156324039e52abdae1032989
+Body:
+{
+    "descripcion": "Balon dorr"
+}
+
+--------------------------------------------------------------------------------
+-- ver actividades de un evento
+--------------------------------------------------------------------------------
+URL: http://127.0.0.1:8000/view/activities/event/
+metodo: POST
+Headers:
+    Authorization: Token cf87095dadcbf5b1156324039e52abdae1032989
+Body:
+{
+    "nombre": "evento"
+}
+
+modify/activity/

@@ -28,6 +28,7 @@ class Evento(models.Model):
     )
     tipo = models.CharField(max_length=100, choices=tipo_opciones)
     foto = models.CharField(max_length=3100) #modificar por un campo que admita imagenes
+    # En este campo va el dueño del evento
     id_usuario = models.ForeignKey(User, on_delete=models.CASCADE)
 
     def __str__(self):
@@ -70,7 +71,8 @@ class Contactos(models.Model):
 class Actividades(models.Model):
     id = models.AutoField(primary_key=True)
     descripcion = models.TextField(blank=True, unique=True)
-    valor = models.FloatField()  # Considerar cambiar a DecimalField para mayor precision.
+    # Este es el valor total de la actividad
+    valor = models.DecimalField(max_digits=20, decimal_places=4)  
     id_evento = models.ForeignKey(Evento, on_delete=models.CASCADE)
 
     def __str__(self):
@@ -81,7 +83,14 @@ class ParticipantesEventoActividad(models.Model):
     id_actividad = models.ForeignKey(Actividades, on_delete=models.CASCADE)
     id_evento = models.ForeignKey(Evento, on_delete=models.CASCADE)
     id_participante = models.ForeignKey(User, on_delete=models.CASCADE)
-    valor_participacion = models.IntegerField()  
+    # Este es el valor que aporta cada participante, no debe superar el valor de la actividad,
+    # La idea es siempre mostrar el valor como número, no como porcentaje, solo se permite dar un %
+    # al creador para el aporte que dará su contacto, pero el sistema calcula automaticamente el valor
+    # númerico y lo asigna.
+    valor_participacion = models.DecimalField(max_digits=20, decimal_places=4)  
+    valor_pagado = models.DecimalField(max_digits=20, decimal_places=4, default=0.0000) 
+    # Este campo servirá para validar si el participante aceptó participar 
+    aceptado = models.BooleanField(null=False, default=False)
 
     def __str__(self):
         return f'{self.id_participante} - {self.id_actividad}'

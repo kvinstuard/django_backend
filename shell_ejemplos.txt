@@ -8,6 +8,11 @@
 from event_expenses.models import Contactos                                      
 Contactos.objects.all().delete()
 --------------------------------------------------------------------------------
+-- Borrar todos los ParticipantesEventoActividad
+--------------------------------------------------------------------------------
+from event_expenses.models import ParticipantesEventoActividad                                      
+ParticipantesEventoActividad.objects.all().delete()
+--------------------------------------------------------------------------------
 -- Borrar todos los Usuarios
 --------------------------------------------------------------------------------
 from event_expenses.models import Usuario                                      

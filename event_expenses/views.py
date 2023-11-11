@@ -318,7 +318,7 @@ def listar_contactos_evento(request):
     contactos_data = { "contactos" : lista_contactos, "message": "Ok!"  }
 
     return Response(contactos_data, status=status.HTTP_200_OK)
-    
+
 # --------------------------------------------------------------------------------
 # Experimental
 # --------------------------------------------------------------------------------

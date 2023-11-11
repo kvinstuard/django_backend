@@ -46,7 +46,8 @@ def test_modificar_usuario(api_client):
         "apellidos": "Updated User",
         "password": "newpassword123",
         "apodo": "updateduser",
-        "foto": "updated_test.jpg"
+        "foto": "updated_test.jpg",
+        "is_active": "True"
     }
     response = api_client.put(url, data, format='json')
     assert response.status_code == status.HTTP_200_OK

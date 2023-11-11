@@ -30,6 +30,9 @@ http://127.0.0.1:8000/event_expenses/api/v1/contactos/
 --------------------------------------------------------------------------------
 http://127.0.0.1:8000/event_expenses/api/v1/evento/
 
+Para crearlo desde la API:
+ver apartado de gestión de eventos.
+ 
 --------------------------------------------------------------------------------
 -- Crear y ver actividades
 --------------------------------------------------------------------------------
@@ -125,3 +128,48 @@ http://127.0.0.1:8000/listar/contactos/evento/
 {
     "email": "a@a.com"
 }
+
+--==============================================================================
+-- Gestión de eventos
+--==============================================================================
+--------------------------------------------------------------------------------
+-- crear eventos por medio de la API
+--------------------------------------------------------------------------------
+URL: http://127.0.0.1:8000/event_expenses/crear/evento/
+metodo: POST
+Headers:
+    Authorization: Token cf87095dadcbf5b1156324039e52abdae1032989
+Body:
+    {
+        "nombre": "Juegaton DBZ",
+        "descripcion": "Para jugar DBZ budokai tenkaichi 3 version latino",
+        "tipo": "VIAJE",
+        "foto": "https://pbs.twimg.com/profile_images/910343871/JuegatonNegro_400x400.jpg"
+    }
+--------------------------------------------------------------------------------
+-- ver eventos y actividades en los que el usuario participa.
+--------------------------------------------------------------------------------
+URL:
+http://127.0.0.1:8000/view/events-activities-as-participant/
+
+method: GET
+
+headers:
+    Authorization: Token cf87095dadcbf5b1156324039e52abdae1032989
+
+--------------------------------------------------------------------------------
+-- ver saldos pendientes por pagar del usuario.
+--------------------------------------------------------------------------------
+URL:
+http://127.0.0.1:8000/view/pending-balance/
+
+method: GET
+
+headers:
+    Authorization: Token cf87095dadcbf5b1156324039e52abdae1032989
+
+--==============================================================================
+-- Gestión de actividades
+--==============================================================================
+NOTAS:
+un creador puede ponerse a si mismo como participante de una actividad y aportar algo.

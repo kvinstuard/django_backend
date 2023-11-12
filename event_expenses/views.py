@@ -455,7 +455,7 @@ def ver_saldos_pendientes(request):
             evento_actividad = {
                 "evento": evento.id_evento.nombre,
                 "actividad": evento.id_actividad.descripcion,
-                "saldo_pendiente": evento.valor_participacion,
+                "saldo_pendiente": evento.valor_participacion - evento.valor_pagado,
             }
             lista_eventos_actividades.append(evento_actividad)
 
@@ -551,6 +551,11 @@ def pagar_actividad_evento(request):
         # El sistema automaticamente asigna el valor de participacion como valor pagado si el pago 
         # excede el valor de participación o ya pagó la deuda.
         valor_a_pagar = request.data["valor_a_pagar"]
+        
+        # si el valor es negativo, retorna error
+        if valor_a_pagar < 0:
+            return Response({"error": True, "error_cause": "Value to pay must be a positive value!"}, status=status.HTTP_400_BAD_REQUEST)
+        
         if eventosActividades.valor_pagado == eventosActividades.valor_participacion:
             return Response({"error": True, "error_cause": "Bill has been paid!"}, status=status.HTTP_400_BAD_REQUEST)
         else:

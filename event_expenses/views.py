@@ -11,6 +11,7 @@ from rest_framework.authtoken.views import ObtainAuthToken, AuthTokenSerializer
 from rest_framework.settings import api_settings
 from django.db.models import Sum
 from django.dispatch import receiver
+from django.contrib.auth.hashers import make_password, check_password
 from django.conf import settings
 from django.db.models.signals import post_save
 from django.core import serializers
@@ -39,7 +40,7 @@ def crear_usuario(request):
             email = request.data["email"],
             first_name = request.data["nombres"],
             last_name = request.data["apellidos"],
-            password = request.data["password"],
+            password = make_password(request.data["password"]),
             username = request.data["apodo"],
             is_active = True,
         )
@@ -163,10 +164,16 @@ class ParticipantesViews(viewsets.ModelViewSet):
 def login_user(request):
     print("user:",request.data) 
     try:
-        user = User.objects.get(email=request.data["email"], password=request.data["password"])
+        user = User.objects.get(email=request.data["email"])
     except User.DoesNotExist:
         return Response({"error": True, "error_cause": 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Verificar la contraseña utilizando check_password
+    if not check_password(request.data["password"], user.password):
+        return Response({"error": True, "error_cause": 'Invalid password'}, status=status.HTTP_401_UNAUTHORIZED)
+
     token = Token.objects.get(user=user)
+
     try:
         usuario = Usuario.objects.get(user=user)
     except Usuario.DoesNotExist:

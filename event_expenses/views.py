@@ -9,7 +9,7 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.authtoken.views import ObtainAuthToken, AuthTokenSerializer
 from rest_framework.settings import api_settings
-from django.db.models import Sum
+from django.db.models import Sum, Count
 from django.dispatch import receiver
 from django.contrib.auth.hashers import make_password, check_password
 from django.conf import settings
@@ -350,7 +350,7 @@ def listar_contactos_evento(request):
                 "nombre": eventoActividad.id_participante.first_name,
                 "evento": eventoActividad.id_evento.nombre,
                 "actividad": eventoActividad.id_actividad.descripcion,
-                "saldo": eventoActividad.valor_participacion - eventoActividad.valor_pagado,
+                "saldo_pendiente": eventoActividad.valor_participacion - eventoActividad.valor_pagado,
             } 
             lista_contactos.append(contact)
     print("lista_contactos:", lista_contactos)
@@ -399,12 +399,19 @@ def ver_eventos_actividades_usuario(request):
                     for event_act in evento_actividades:
                         evento_actividad = {
                             "evento": event_act.id_evento.nombre,
+                            "evento_tipo": event_act.id_evento.tipo,
+                            "evento_foto": event_act.id_evento.foto,
+                            "evento_creador": event_act.id_evento.id_usuario.username,
                             "actividad": event_act.id_actividad.descripcion,
+                            "actividad_valor": event_act.id_actividad.valor,
                         }
                 else:
                     # En caso de que no hayan actividades asociadas al evento, se deja un string vacío
                     evento_actividad = {
                         "evento": evento.nombre,
+                        "evento_tipo": evento.tipo,
+                        "evento_foto": evento.foto,
+                        "evento_creador": evento.id_usuario.username,
                         "actividad": "",
                     }
 
@@ -422,7 +429,11 @@ def ver_eventos_actividades_usuario(request):
         for evento in eventos_participante:
             evento_actividad = {
                 "evento": evento.id_evento.nombre,
+                "evento_tipo": evento.id_evento.tipo,
+                "evento_foto": evento.id_evento.foto,
+                "evento_creador": evento.id_evento.id_usuario.username,
                 "actividad": evento.id_actividad.descripcion,
+                "actividad_valor": evento.id_actividad.valor,
             }
             lista_eventos_actividades.append(evento_actividad)
             
@@ -461,8 +472,10 @@ def ver_saldos_pendientes(request):
         for evento in eventos_participante:
             evento_actividad = {
                 "evento": evento.id_evento.nombre,
+                "evento_tipo": evento.id_evento.tipo,
                 "actividad": evento.id_actividad.descripcion,
                 "saldo_pendiente": evento.valor_participacion - evento.valor_pagado,
+                "saldo_total": evento.valor_participacion,
             }
             lista_eventos_actividades.append(evento_actividad)
 
@@ -673,6 +686,7 @@ def ver_actividades_evento(request):
                 "actividad_descripcion": actividad.descripcion,
                 "actividad_valor": actividad.valor,
                 "evento": actividad.id_evento.nombre,
+                "evento_tipo": actividad.id_evento.tipo,
             }
             lista_actividades.append(activity)
 
@@ -893,6 +907,65 @@ def aceptar_invitacion_actividad(request):
     serializer = ParticipantesSerializer(eventosActividades, many=False)
 
     return Response({"error":False, "description": serializer.data, "message": "Accepted!"}, status=status.HTTP_200_OK)
+
+# --------------------------------------------------------------------------------
+# Dashboard
+# --------------------------------------------------------------------------------
+
+# Vista para mostrar: 
+# - cantidad de contactos. 
+# - cantidad de eventos creados. 
+# - total de saldos pendientes.
+# - total de eventos en los que participa el usuario.
+
+@api_view(['GET']) # Es un decorador que me sirve para renderizar en pantalla la vista basada en función.
+@authentication_classes([TokenAuthentication]) # Me sirve para permitir autenticación por token para acceder a este método.
+@permission_classes([IsAuthenticated])
+def obtener_datos_dashboard(request):
+    # Obtenemos al usuario por medio de su token
+    try:
+        user = Token.objects.get(key=request.auth.key).user
+    except Token.DoesNotExist:
+        return Response({"error": True, "error_cause": 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Obtenemos la cantidad de contactos
+    try: 
+        cantidad_contactos = Contactos.objects.filter(usuario=user).aggregate(Count('contacto'))
+    except Contactos.DoesNotExist:
+        print("User hasn't contacts yet!")
+
+    # Obtenemos la cantidad de eventos creados
+    try:
+        cantidad_eventos_creados = Evento.objects.filter(id_usuario=user).aggregate(Count('nombre'))
+    except Evento.DoesNotExist:
+        print("User hasn't created events yet!")
+
+    # Obtenemos el total de saldos pendientes
+
+    # Buscamos los eventos en los que participa el usuario
+    try:
+        eventos_participante = ParticipantesEventoActividad.objects.filter(id_participante=user) 
+    except Evento.DoesNotExist:
+        print("User isn't participant of events yet!")
+
+    # Variable auxiliar para guardar todas las actividades en las que el usuario participa.
+    total_saldos_pendientes = 0
+    cantidad_eventos_participante = 0
+
+    # Ahora guardamos las actividades en las que el usuario participa, junto con su saldo pendiente.
+    for evento in eventos_participante:
+        cantidad_eventos_participante += 1
+        total_saldos_pendientes += evento.valor_participacion - evento.valor_pagado
+
+    # Guardamos toda la información en un objeto JSON
+    dashboard_data = {
+        "cantidad_contactos": cantidad_contactos["contacto__count"],
+        "cantidad_eventos_creados": cantidad_eventos_creados["nombre__count"],
+        "total_saldos_pendientes": total_saldos_pendientes,
+        "cantidad_eventos_participante": cantidad_eventos_participante,
+    }
+
+    return Response({"error":False, "description": dashboard_data}, status=status.HTTP_200_OK)
 
 # --------------------------------------------------------------------------------
 # Experimental

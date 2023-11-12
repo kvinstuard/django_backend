@@ -73,4 +73,7 @@ urlpatterns = [
           views.quitar_contacto_actividad, name="quitar_contacto_actividad"),  
      path('accept/activity/', 
           views.aceptar_invitacion_actividad, name="aceptar_invitacion_actividad"),  
+     # Dashboard
+     path('dashboard/data/', 
+          views.obtener_datos_dashboard, name="obtener_datos_dashboard"),  
 ]

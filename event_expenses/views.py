@@ -345,12 +345,16 @@ def listar_contactos_evento(request):
             print("No hay contactos asociados al evento:", evento.nombre)
         print("eventosActividades:", eventosActividades)        
         for eventoActividad in eventosActividades:
+            aceptado = "No"
+            if eventoActividad.aceptado:
+                aceptado = "Yes"
             contact = {
                 "email": eventoActividad.id_participante.email,
                 "nombre": eventoActividad.id_participante.first_name,
                 "evento": eventoActividad.id_evento.nombre,
                 "actividad": eventoActividad.id_actividad.descripcion,
                 "saldo_pendiente": eventoActividad.valor_participacion - eventoActividad.valor_pagado,
+                "aceptado": aceptado,
             } 
             lista_contactos.append(contact)
     print("lista_contactos:", lista_contactos)
@@ -470,12 +474,16 @@ def ver_saldos_pendientes(request):
 
         # Ahora guardamos las actividades en las que el usuario participa, junto con su saldo pendiente.
         for evento in eventos_participante:
+            aceptado = "No"
+            if evento.aceptado:
+                aceptado = "Yes"
             evento_actividad = {
                 "evento": evento.id_evento.nombre,
                 "evento_tipo": evento.id_evento.tipo,
                 "actividad": evento.id_actividad.descripcion,
                 "saldo_pendiente": evento.valor_participacion - evento.valor_pagado,
                 "saldo_total": evento.valor_participacion,
+                "aceptado": aceptado,
             }
             lista_eventos_actividades.append(evento_actividad)
 

@@ -18,6 +18,8 @@ from django.core import serializers
 import json
 import random
 from decimal import Decimal
+from datetime import datetime
+
 
 # --------------------------------------------------------------------------------
 # Creando el CRUD
@@ -35,6 +37,13 @@ def crear_usuario(request):
         serializer = UsuarioSerializer(usuarios, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     elif request.method == 'POST':
+        # Validemos si el usuario existe
+        try:
+            user = User.objects.get(email=request.data["email"])
+            return Response({"error": True, "error_cause": 'User already exists!'}, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:
+            print("User doesn't exists!")
+
         # Creamos el usuario (User)
         user = User.objects.create(
             email = request.data["email"],
@@ -130,6 +139,13 @@ def crear_evento(request):
         except Token.DoesNotExist:
             return Response({"error": True, "error_cause": 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
         
+        # Validemos que el evento no exista
+        try:
+            evento = Evento.objects.get(nombre=request.data["nombre"])
+            return Response({"error": True, "error_cause": 'Event already exists!'}, status=status.HTTP_400_BAD_REQUEST)
+        except Evento.DoesNotExist:
+            print("Event doesn't exists!")
+
         # Creamos el evento a partir del usuario
         request_data = {
             "nombre": request.data["nombre"],
@@ -353,7 +369,7 @@ def listar_contactos_evento(request):
                 "nombre": eventoActividad.id_participante.first_name,
                 "evento": eventoActividad.id_evento.nombre,
                 "actividad": eventoActividad.id_actividad.descripcion,
-                "saldo_pendiente": eventoActividad.valor_participacion - eventoActividad.valor_pagado,
+                "saldo_pendiente": round(eventoActividad.valor_participacion - eventoActividad.valor_pagado, 2),
                 "aceptado": aceptado,
             } 
             lista_contactos.append(contact)
@@ -407,7 +423,7 @@ def ver_eventos_actividades_usuario(request):
                             "evento_foto": event_act.id_evento.foto,
                             "evento_creador": event_act.id_evento.id_usuario.username,
                             "actividad": event_act.id_actividad.descripcion,
-                            "actividad_valor": event_act.id_actividad.valor,
+                            "actividad_valor": round(event_act.id_actividad.valor, 2),
                         }
                 else:
                     # En caso de que no hayan actividades asociadas al evento, se deja un string vacío
@@ -437,7 +453,7 @@ def ver_eventos_actividades_usuario(request):
                 "evento_foto": evento.id_evento.foto,
                 "evento_creador": evento.id_evento.id_usuario.username,
                 "actividad": evento.id_actividad.descripcion,
-                "actividad_valor": evento.id_actividad.valor,
+                "actividad_valor": round(evento.id_actividad.valor, 2),
             }
             lista_eventos_actividades.append(evento_actividad)
             
@@ -481,8 +497,8 @@ def ver_saldos_pendientes(request):
                 "evento": evento.id_evento.nombre,
                 "evento_tipo": evento.id_evento.tipo,
                 "actividad": evento.id_actividad.descripcion,
-                "saldo_pendiente": evento.valor_participacion - evento.valor_pagado,
-                "saldo_total": evento.valor_participacion,
+                "saldo_pendiente": round(evento.valor_participacion - evento.valor_pagado, 2),
+                "saldo_total": round(evento.valor_participacion, 2),
                 "aceptado": aceptado,
             }
             lista_eventos_actividades.append(evento_actividad)
@@ -516,7 +532,7 @@ def modificar_evento(request):
         try:
             evento = Evento.objects.get(id_usuario=user, nombre=request.data["nombre_antiguo"])
         except Evento.DoesNotExist:
-            return Response({"error": True, "error_cause": "User hasn't created this event {event}".format(event=request.data["nombre_antiguo"])}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": True, "error_cause": "User hasn't created this event: {event}".format(event=request.data["nombre_antiguo"])}, status=status.HTTP_404_NOT_FOUND)
         
         # Validamos que el evento no tenga actividades asociadas
         try:
@@ -538,7 +554,7 @@ def modificar_evento(request):
 # Vista para realizar pagos de actividades (en los eventos).
 # Recordar: 
 # - los pagos pueden ser parciales
-# - el creador (prestador) o contacto (deudor) pueden registrar el pago.
+# - el creador de la actividad (prestador) o contacto (deudor) pueden registrar el pago.
 # - los pagos se hacen por evento, cuando se calculan las diferencias, no por actividad.
 @api_view(['POST']) # Es un decorador que me sirve para renderizar en pantalla la vista basada en función.
 @authentication_classes([TokenAuthentication]) # Me sirve para permitir autenticación por token para acceder a este método.
@@ -562,23 +578,23 @@ def pagar_actividad_evento(request):
             # Primero validemos si es participante (deudor)
             eventosActividades = ParticipantesEventoActividad.objects.get(id_actividad=actividad, id_participante=user)
         except ParticipantesEventoActividad.DoesNotExist:
-            # En caso de que no sea participante (deudor), averiguemos si es el creador (prestador)
-            try:
-                evento = Evento.objects.get(nombre=actividad.id_evento.nombre, id_usuario=user)
-            except Evento.DoesNotExist:
+            # En caso de que no sea participante (deudor), averiguemos si es el creador de la actividad (prestador)
+            if actividad.id_usuario == user:
+                print("Current user is the activity's owner")
+            else:
                 return Response({"error": True, "error_cause": "User cannot pay the bill, due to it isn't neither the owner nor participant!"}, status=status.HTTP_400_BAD_REQUEST)
             # Si es el dueño de la actividad y va a realizar el pago, entonces debemos obtener 
             # obligatoriamente los datos de "ParticipantesEventoActividad", para pagar sobre 
             # el valor de la participación.
             try:
-                eventosActividades = ParticipantesEventoActividad.objects.get(id_actividad=actividad, id_evento=evento)
+                eventosActividades = ParticipantesEventoActividad.objects.get(id_actividad=actividad, id_evento=actividad.evento)
             except ParticipantesEventoActividad.DoesNotExist:
                 return Response({"error": True, "error_cause": "User cannot pay the bill, due to it isn't neither the owner nor participant!"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Ahora pagamos la actividad
         # El sistema automaticamente asigna el valor de participacion como valor pagado si el pago 
         # excede el valor de participación o ya pagó la deuda.
-        valor_a_pagar = request.data["valor_a_pagar"]
+        valor_a_pagar = Decimal(request.data["valor_a_pagar"])
         
         # si el valor es negativo, retorna error
         if valor_a_pagar < 0:
@@ -588,9 +604,10 @@ def pagar_actividad_evento(request):
             return Response({"error": True, "error_cause": "Bill has been paid!"}, status=status.HTTP_400_BAD_REQUEST)
         else:
             if valor_a_pagar > eventosActividades.valor_participacion or (valor_a_pagar + eventosActividades.valor_pagado) >= eventosActividades.valor_participacion:
-                eventosActividades.valor_pagado = eventosActividades.valor_participacion
+                eventosActividades.valor_pagado = round(eventosActividades.valor_participacion, 2)
             else:
                 eventosActividades.valor_pagado += valor_a_pagar
+                eventosActividades.valor_pagado = round(eventosActividades.valor_pagado, 2)
         eventosActividades.save()
         serializer = ParticipantesSerializer(eventosActividades, many=False)
         return Response({"error": False, "description": serializer.data, "error_cause": "Payment made successfully!"}, status=status.HTTP_200_OK)
@@ -617,15 +634,32 @@ def crear_actividad(request):
         
         # Buscamos el evento al que queremos asociar dicha actividad
         try:
-            evento = Evento.objects.get(id_usuario=user, nombre=request.data["nombre_evento"])
+            evento = Evento.objects.get(nombre=request.data["nombre_evento"])
         except Evento.DoesNotExist:
-            return Response({"error": True, "error_cause": "User hasn't created this event {event}".format(event=request.data["nombre"])}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": True, "error_cause": "Event not found: {event}".format(event=request.data["nombre"])}, status=status.HTTP_404_NOT_FOUND)
+
+        # Validemos que el creador de la actividad sea contacto del dueño del evento o el dueño del evento.
+        if evento.id_usuario == user:
+            print("User is currently the event's owner")
+        else:
+            try:
+                contacto_creador_actividad = Contactos.objects.get(usuario=evento.id_usuario, contacto=user)
+            except Contactos.DoesNotExist:
+                return Response({"error":True, "error_cause":"User isn't contact of event's owner!"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Validemos que la actividad no exista
+        try:
+            actividad = Actividades.objects.get(descripcion=request.data["descripcion"])
+            return Response({"error":True, "error_cause":"Activity already exists!"}, status=status.HTTP_400_BAD_REQUEST)
+        except Actividades.DoesNotExist:
+            print("Activity doesn't exists!")
 
         # Creamos la actividad.
         activity = Actividades.objects.create(
             descripcion = request.data["descripcion"],
-            valor = request.data["valor"],
+            valor = round(request.data["valor"], 2),
             id_evento = evento,
+            id_usuario = user,
         )
 
         activity.save()
@@ -651,11 +685,11 @@ def quitar_actividad(request):
         except Actividades.DoesNotExist:
             return Response({"error": True, "error_cause": 'Activity does not exist'}, status=status.HTTP_404_NOT_FOUND)
         
-        # Validamos que el usuario sea el dueño del evento, al que está vinculada la actividad.
-        try:
-            evento = Evento.objects.get(nombre=actividad.id_evento.nombre, id_usuario=user)
-        except Evento.DoesNotExist:
-            return Response({"error": True, "error_cause": 'Event associated with activity, does not exist or User is not its current owner!'}, status=status.HTTP_400_BAD_REQUEST)
+        # Validamos que el usuario sea el dueño de la actividad.
+        if actividad.id_usuario == user:
+            print("Current user is the activity's owner")
+        else:
+            return Response({"error": True, "error_cause": "Current user isn't Activity's owner"}, status=status.HTTP_400_BAD_REQUEST)
 
         actividad.delete()
         return Response({"error": False, "message": 'Activity deleted successfully!'}, status=status.HTTP_200_OK)
@@ -677,7 +711,7 @@ def ver_actividades_evento(request):
         try:
             evento = Evento.objects.get(nombre=request.data["nombre"])
         except Evento.DoesNotExist:
-            return Response({"error": True, "error_cause": "User hasn't created this event {event}".format(event=request.data["nombre"])}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": True, "error_cause": "User hasn't created this event: {event}".format(event=request.data["nombre"])}, status=status.HTTP_404_NOT_FOUND)
         
         # Miramos cuales actividades están asociadas al evento.
         try:
@@ -692,7 +726,7 @@ def ver_actividades_evento(request):
         for actividad in actividades:
             activity = {
                 "actividad_descripcion": actividad.descripcion,
-                "actividad_valor": actividad.valor,
+                "actividad_valor": round(actividad.valor, 2),
                 "evento": actividad.id_evento.nombre,
                 "evento_tipo": actividad.id_evento.tipo,
             }
@@ -719,14 +753,14 @@ def modificar_actividad(request):
         except Actividades.DoesNotExist:
             return Response({"error": True, "error_cause": "Activity doesn't exist"}, status=status.HTTP_404_NOT_FOUND)
         
-        # Validamos que el usuario sea el dueño del evento, al que está vinculada la actividad.
-        try:
-            evento = Evento.objects.get(nombre=actividad.id_evento.nombre, id_usuario=user)
-        except Evento.DoesNotExist:
-            return Response({"error": True, "error_cause": 'Event associated with activity, does not exist or User is not its current owner!'}, status=status.HTTP_400_BAD_REQUEST)
-        
+        # Validamos que el usuario sea el dueño de la actividad.
+        if actividad.id_usuario == user:
+            print("Current user is the activity's owner")
+        else:
+            return Response({"error": True, "error_cause": "Current user isn't Activity's owner"}, status=status.HTTP_400_BAD_REQUEST)
+
         # Asignamos el id_evento, porque es obligatorio pasarlo al serializador.
-        request.data["id_evento"] = evento.id
+        request.data["id_evento"] = actividad.id_evento.id
 
         # Modificamos dicha actividad
         serializer = ActividadesSerializer(actividad, data=request.data, many=False)
@@ -760,30 +794,30 @@ def agregar_contacto_actividad(request):
         except Actividades.DoesNotExist:
             return Response({"error": True, "error_cause": "Activity doesn't exist"}, status=status.HTTP_404_NOT_FOUND)
         
-        # Validamos que el usuario sea el dueño del evento, al que está vinculada la actividad.
+        # Validamos que el usuario sea el dueño del evento asociado a la actividad.
         try:
-            evento = Evento.objects.get(nombre=actividad.id_evento.nombre, id_usuario=user)
+            evento = Evento.objects.get(id_usuario=user, nombre=actividad.id_evento.nombre)
         except Evento.DoesNotExist:
-            return Response({"error": True, "error_cause": 'Event associated with activity, does not exist or User is not its current owner!'}, status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response({"error": True, "error_cause": "User hasn't created this event: {event}".format(event=actividad.id_evento.nombre)}, status=status.HTTP_404_NOT_FOUND)
+
         # Busquemos al contacto que queremos asignar
         try:
             contact = User.objects.get(email=request.data["email_contacto"])
         except User.DoesNotExist:
             return Response({"error":True, "error_cause":"Contact doesn't exist!"}, status=status.HTTP_404_NOT_FOUND)
-        
-        # Validemos que efectivamente sea contacto del usuario (creador)
+
+        # Validemos que efectivamente sea contacto del dueño del evento.
         try:
-            contacto = Contactos.objects.get(usuario=user, contacto=contact)
+            contacto_asignar = Contactos.objects.get(usuario=user, contacto=contact)
         except Contactos.DoesNotExist:
             return Response({"error":True, "error_cause":"User hasn't this contact aggregated yet!"}, status=status.HTTP_404_NOT_FOUND)
 
         # Miremos si el valor de participación asignado es porcentaje o si es valor númerico 
         # si es porcentaje se calcula su valor númerico equivalente.
         if request.data["valor_participacion"] > 0 and request.data["valor_participacion"] <= 1:
-            valor_participacion_contacto = actividad.valor * Decimal(request.data["valor_participacion"])
+            valor_participacion_contacto = round(actividad.valor * Decimal(request.data["valor_participacion"]), 2)
         else:
-            valor_participacion_contacto = request.data["valor_participacion"]
+            valor_participacion_contacto = round(request.data["valor_participacion"], 2)
 
         # Validemos que el valor de participación del contacto no supere el valor total de la actividad
         if valor_participacion_contacto > actividad.valor:
@@ -794,20 +828,20 @@ def agregar_contacto_actividad(request):
 
         # Validemos que la sumatoria del valor de participación y los otros valores de participación no supere el valor de la actividad:
         try:    
-            sumatoria_valores_participacion = ParticipantesEventoActividad.objects.filter(id_actividad=actividad, id_evento=evento).aggregate(Sum('valor_participacion', default=0))
+            sumatoria_valores_participacion = ParticipantesEventoActividad.objects.filter(id_actividad=actividad, id_evento=actividad.id_evento).aggregate(Sum('valor_participacion', default=0))
             sumatoria_valores_participacion = sumatoria_valores_participacion["valor_participacion__sum"]
         except ParticipantesEventoActividad.DoesNotExist:
             print("This's going to be the first participation!")
         
-        if valor_participacion_contacto + sumatoria_valores_participacion > actividad.valor:
+        if Decimal(valor_participacion_contacto) + sumatoria_valores_participacion > actividad.valor:
             return Response({"error":True, "error_cause":"Sum of participation's values: {p_val}, is greater than activity's value: {act_val}!".format(
-                p_val = valor_participacion_contacto + sumatoria_valores_participacion, 
+                p_val = Decimal(valor_participacion_contacto) + sumatoria_valores_participacion, 
                 act_val = actividad.valor, )}, 
             status=status.HTTP_400_BAD_REQUEST)
         
         # Validemos que el contacto no haya sido asignado aún a la actividad
         try:    
-            eventosActividades = ParticipantesEventoActividad.objects.get(id_actividad=actividad, id_evento=evento, id_participante=contact)
+            eventosActividades = ParticipantesEventoActividad.objects.get(id_actividad=actividad, id_evento=actividad.id_evento, id_participante=contact)
             return Response({"error":True, "error_cause":"Contact already assigned to this activity!"}, status=status.HTTP_400_BAD_REQUEST)
         except ParticipantesEventoActividad.DoesNotExist:
             print("Contact not assigned yet!")
@@ -815,14 +849,14 @@ def agregar_contacto_actividad(request):
         # Asignemos el contacto a la actividad
         eventosActividades = ParticipantesEventoActividad.objects.create(
             id_actividad = actividad,
-            id_evento = evento,
+            id_evento = actividad.id_evento,
             id_participante = contact,
-            valor_participacion = valor_participacion_contacto
+            valor_participacion = round(valor_participacion_contacto, 2)
         )
         eventosActividades.save()
         serializer = ParticipantesSerializer(eventosActividades, many=False)
 
-        return Response({"error":False, "description": serializer.data, "sum_valor_participacion": valor_participacion_contacto + sumatoria_valores_participacion}, status=status.HTTP_200_OK)
+        return Response({"error":False, "description": serializer.data, "sum_valor_participacion": Decimal(valor_participacion_contacto) + sumatoria_valores_participacion}, status=status.HTTP_200_OK)
 
 # Vista para desvincular contacto de una actividad de un evento.
 # No tendrá la restriccion de que debe ser el creador quien lo elimine,
@@ -851,15 +885,18 @@ def quitar_contacto_actividad(request):
     except Actividades.DoesNotExist:
         return Response({"error": True, "error_cause": "Activity doesn't exist"}, status=status.HTTP_404_NOT_FOUND)
 
-    # Validemos que el usuario sea el dueño del evento asociado a esa actividad.
+    # Validamos que el usuario sea el dueño del evento asociado a la actividad.
     try:
-        evento = Evento.objects.get(nombre=actividad.id_evento.nombre, id_usuario=user)
+        evento = Evento.objects.get(id_usuario=user, nombre=actividad.id_evento.nombre)
     except Evento.DoesNotExist:
-        return Response({"error": True, "error_cause": 'Event associated with activity, does not exist or User is not its current owner!'}, status=status.HTTP_400_BAD_REQUEST)
-    
+        return Response({"error": True, "error_cause": "User hasn't created this event: {event}".format(event=actividad.id_evento.nombre)}, status=status.HTTP_404_NOT_FOUND)
+
     # Validamos que no hayan actividades diferentes en el mismo evento a la que está vinculado el usuario.
+    # Esto para cumplir con el requerimiento que se menciona en la descripción de la vista.
+    # "Quitar contactos del evento. Solo el creador del evento puede quitarlos y 
+    # si no se ha registrado alguna actividad."
     try:
-        actividades_evento = Actividades.objects.filter(id_evento=evento)
+        actividades_evento = Actividades.objects.filter(id_evento=actividad.id_evento)
         if len(actividades_evento) > 1:
             return Response({"error":True, "error_cause":"There're more activities in the event!"}, status=status.HTTP_400_BAD_REQUEST)
     except Actividades.DoesNotExist:
@@ -873,7 +910,7 @@ def quitar_contacto_actividad(request):
 
     # Validamos que efectivamente el contacto esté asignado a la actividad.
     try:    
-        eventosActividades = ParticipantesEventoActividad.objects.get(id_actividad=actividad, id_evento=evento, id_participante=contact)
+        eventosActividades = ParticipantesEventoActividad.objects.get(id_actividad=actividad, id_evento=actividad.id_evento, id_participante=contact)
     except ParticipantesEventoActividad.DoesNotExist:
         return Response({"error":True, "error_cause":"User isn't participant of this activity!"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -911,6 +948,7 @@ def aceptar_invitacion_actividad(request):
     
     # Aceptamos la invitación
     eventosActividades.aceptado = True
+    eventosActividades.fecha_aceptacion = datetime.now()
     eventosActividades.save()
     serializer = ParticipantesSerializer(eventosActividades, many=False)
 
@@ -969,7 +1007,7 @@ def obtener_datos_dashboard(request):
     dashboard_data = {
         "cantidad_contactos": cantidad_contactos["contacto__count"],
         "cantidad_eventos_creados": cantidad_eventos_creados["nombre__count"],
-        "total_saldos_pendientes": total_saldos_pendientes,
+        "total_saldos_pendientes": round(total_saldos_pendientes, 2),
         "cantidad_eventos_participante": cantidad_eventos_participante,
     }
 

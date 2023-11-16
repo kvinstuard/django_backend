@@ -8,7 +8,8 @@ from .models import Evento, Usuario, Contactos, Actividades, ParticipantesEvento
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = '__all__' 
+        exclude = ['password']
+        extra_kwargs = {'password': {'write_only': True}}
 
 class UsuarioSerializer(serializers.ModelSerializer):
     user = UserSerializer()

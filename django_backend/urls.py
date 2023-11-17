@@ -47,6 +47,8 @@ urlpatterns = [
           views.agregar_contacto, name="agregar_contacto"),
      path("eliminar/contacto/", 
           views.eliminar_contacto, name="eliminar_contacto"),
+     path('list/pending-balance/contacts/', 
+          views.listar_saldos_pendientes_contactos, name="listar_saldos_pendientes_contactos"),
      # Gestión de eventos
      path('crear/evento/', 
           views.crear_evento, name="crear_evento"),
@@ -58,6 +60,8 @@ urlpatterns = [
           views.modificar_evento, name="modificar_evento"),
      path('pay/activity-event/', 
           views.pagar_actividad_evento, name="pagar_actividad_evento"),
+     path('view/all-activities-event/', 
+          views.ver_actividades_todas_eventos, name="ver_actividades_todas_eventos"),
      # Gestión de actividades
      path('create/activity/', 
           views.crear_actividad, name="crear_actividad"),
@@ -76,4 +80,6 @@ urlpatterns = [
      # Dashboard
      path('dashboard/data/', 
           views.obtener_datos_dashboard, name="obtener_datos_dashboard"),  
+       
+          
 ]

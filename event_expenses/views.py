@@ -19,7 +19,7 @@ import json
 import random
 from decimal import Decimal
 from datetime import datetime
-
+from django.db.models import Q
 
 # --------------------------------------------------------------------------------
 # Creando el CRUD
@@ -214,6 +214,11 @@ def login_user(request):
 def agregar_contacto(request):
     correo_usuario = request.data["correo_usuario"]
     correo_contacto = request.data["correo_contacto"]
+
+    # Un usuario no puede agregarse a si mismo, validamos eso.
+    if correo_usuario == correo_contacto:
+        return Response({"error":True, "error_cause":"User can't add himself/herself!"}, status=status.HTTP_404_NOT_FOUND)
+
     # Determinamos si el usuario existe
     try:
         user = User.objects.get(email=correo_usuario)
@@ -287,8 +292,9 @@ def eliminar_contacto(request):
     # consultamos la tabla "ParticipantesEventoActividad", para ver si el contacto
     # ha sido agregado a un evento.
     try:
-        participantes_eventos = ParticipantesEventoActividad.objects.get(id_participante=contact)
-        return Response({"error":True, "error_cause":"Contact is associated with an event's activity; activity: '{nombre_actividad}', evento: '{nombre_evento}'".format(nombre_actividad=participantes_eventos.id_actividad.descripcion, nombre_evento=participantes_eventos.id_evento.nombre)}, status=status.HTTP_400_BAD_REQUEST)
+        participantes_eventos = ParticipantesEventoActividad.objects.filter(id_participante=contact)
+        if len(participantes_eventos) > 1:
+            return Response({"error":True, "error_cause":"Contact is associated with an event's activity; activity: '{nombre_actividad}', evento: '{nombre_evento}'".format(nombre_actividad=participantes_eventos[0].id_actividad.descripcion, nombre_evento=participantes_eventos[0].id_evento.nombre)}, status=status.HTTP_400_BAD_REQUEST)
     except ParticipantesEventoActividad.DoesNotExist:
         print("El contacto no está agregado a alguna actividad de un evento!")
     
@@ -332,7 +338,7 @@ def listar_contactos(request):
     return Response(contactos_data, status=status.HTTP_200_OK)
     
 
-# Listar contactos de un usuario especifico por evento
+# Listar contactos de que tengan una deuda con el usuario dueño de una actividad
 
 @api_view(['POST'])
 def listar_contactos_evento(request):
@@ -342,23 +348,23 @@ def listar_contactos_evento(request):
     except User.DoesNotExist:
         return Response({"error":True, "error_cause":"User does not exist!"}, status=status.HTTP_404_NOT_FOUND)
 
-    # Buscamos los eventos creados por el usuario
+    # Buscamos las actividades creadas por el usuario
     try:
-        eventos = Evento.objects.filter(id_usuario=user) 
-    except Evento.DoesNotExist:
-        return Response({ "contactos" : [], "message": "User hasn't created events yet!"  }, status=status.HTTP_200_OK)
-    
+        actividades = Actividades.objects.filter(id_usuario=user) 
+    except Actividades.DoesNotExist:
+        return Response({ "contactos" : [], "message": "User hasn't created activities yet!"  }, status=status.HTTP_200_OK)
+
     # Ahora extraemos los datos de cada contacto
-    print("eventos:", eventos)
+    print("actividades:", actividades)
     lista_contactos = []
-    for evento in eventos:
-        print("evento:", evento)
+    for actividad in actividades:
+        print("actividad:", actividad)
         # Buscamos el/los eventos creados por el usuario
         # a los que esté asociado el contacto
         try:
-            eventosActividades = ParticipantesEventoActividad.objects.filter(id_evento=evento)
+            eventosActividades = ParticipantesEventoActividad.objects.filter(id_evento=actividad.id_evento, id_actividad=actividad)
         except ParticipantesEventoActividad.DoesNotExist:
-            print("No hay contactos asociados al evento:", evento.nombre)
+            print("No hay contactos asociados al evento:", actividad.id_evento.nombre)
         print("eventosActividades:", eventosActividades)        
         for eventoActividad in eventosActividades:
             aceptado = "No"
@@ -366,9 +372,11 @@ def listar_contactos_evento(request):
                 aceptado = "Yes"
             contact = {
                 "email": eventoActividad.id_participante.email,
-                "nombre": eventoActividad.id_participante.first_name,
+                "nombre_usuario": eventoActividad.id_participante.username,
                 "evento": eventoActividad.id_evento.nombre,
                 "actividad": eventoActividad.id_actividad.descripcion,
+                "actividad_email_propietario": eventoActividad.id_actividad.id_usuario.email,
+                "actividad_usuario_propietario": eventoActividad.id_actividad.id_usuario.username,
                 "saldo_pendiente": round(eventoActividad.valor_participacion - eventoActividad.valor_pagado, 2),
                 "aceptado": aceptado,
             } 
@@ -377,6 +385,61 @@ def listar_contactos_evento(request):
     contactos_data = { "contactos" : lista_contactos, "message": "Ok!"  }
 
     return Response(contactos_data, status=status.HTTP_200_OK)
+
+# vista para listar los saldos pendientes de todos mis contactos.
+
+@api_view(['GET']) # Es un decorador que me sirve para renderizar en pantalla la vista basada en función.
+@authentication_classes([TokenAuthentication]) # Me sirve para permitir autenticación por token para acceder a este método.
+@permission_classes([IsAuthenticated])
+def listar_saldos_pendientes_contactos(request):
+    # Obtenemos al usuario por medio de su token
+    try:
+        user = Token.objects.get(key=request.auth.key).user
+    except Token.DoesNotExist:
+        return Response({"error": True, "error_cause": 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Consultamos los contactos del usuario
+    try:
+        contactos = Contactos.objects.filter(usuario=user)
+        if len(contactos) == 0:
+            return Response({"saldos_pendientes": [], "message": "User doesn't have contacts!"}, status=status.HTTP_200_OK) 
+    except Contactos.DoesNotExist:
+        print("User doesn't have contacts!")
+
+    # Variable auxiliar para guardar todas las actividades en las que el usuario participa.
+    lista_eventos_actividades = []
+
+    for contacto in contactos:
+        # Buscamos los eventos en los que participa el contacto
+        try:
+            eventos_participante = ParticipantesEventoActividad.objects.filter(id_participante=contacto.contacto) 
+        except Evento.DoesNotExist:
+            print("User isn't participant of events yet!")
+
+        # Ahora guardamos las actividades en las que el usuario participa, junto con su saldo pendiente.
+        for evento in eventos_participante:
+            aceptado = "No"
+            if evento.aceptado:
+                aceptado = "Yes"
+            evento_actividad = {
+                "contacto": contacto.contacto.username,
+                "evento": evento.id_evento.nombre,
+                "evento_tipo": evento.id_evento.tipo,
+                "actividad": evento.id_actividad.descripcion,
+                "actividad_email_propietario": evento.id_actividad.id_usuario.email,
+                "actividad_usuario_propietario": evento.id_actividad.id_usuario.username,
+                "saldo_pendiente": round(evento.valor_participacion - evento.valor_pagado, 2),
+                "saldo_total": round(evento.valor_participacion, 2),
+                "aceptado": aceptado,
+            }
+            lista_eventos_actividades.append(evento_actividad)
+
+    # Se valida si el usuario participa en algún evento o creó uno.
+    if len(lista_eventos_actividades) > 0:
+        eventos_actividades_data = { "eventos_actividades": lista_eventos_actividades, "message": "Ok!" }
+        return Response(eventos_actividades_data, status=status.HTTP_200_OK)
+    else:
+        return Response({"error": True, "error_cause": "Contacts aren't participant of any event yet!"}, status=status.HTTP_404_NOT_FOUND) 
 
 # --------------------------------------------------------------------------------
 # Gestión de eventos
@@ -422,7 +485,11 @@ def ver_eventos_actividades_usuario(request):
                             "evento_tipo": event_act.id_evento.tipo,
                             "evento_foto": event_act.id_evento.foto,
                             "evento_creador": event_act.id_evento.id_usuario.username,
+                            "email_participante": event_act.id_participante.email,
+                            "usuario_participante": event_act.id_participante.username,
                             "actividad": event_act.id_actividad.descripcion,
+                            "actividad_email_propietario": event_act.id_actividad.id_usuario.email,
+                            "actividad_usuario_propietario": event_act.id_actividad.id_usuario.username,
                             "actividad_valor": round(event_act.id_actividad.valor, 2),
                         }
                 else:
@@ -452,7 +519,11 @@ def ver_eventos_actividades_usuario(request):
                 "evento_tipo": evento.id_evento.tipo,
                 "evento_foto": evento.id_evento.foto,
                 "evento_creador": evento.id_evento.id_usuario.username,
+                "email_participante": evento.id_participante.email,
+                "usuario_participante": evento.id_participante.username,
                 "actividad": evento.id_actividad.descripcion,
+                "actividad_email_propietario": evento.id_actividad.id_usuario.email,
+                "actividad_usuario_propietario": evento.id_actividad.id_usuario.username,
                 "actividad_valor": round(evento.id_actividad.valor, 2),
             }
             lista_eventos_actividades.append(evento_actividad)
@@ -497,6 +568,8 @@ def ver_saldos_pendientes(request):
                 "evento": evento.id_evento.nombre,
                 "evento_tipo": evento.id_evento.tipo,
                 "actividad": evento.id_actividad.descripcion,
+                "actividad_email_propietario": evento.id_actividad.id_usuario.email,
+                "actividad_usuario_propietario": evento.id_actividad.id_usuario.username,
                 "saldo_pendiente": round(evento.valor_participacion - evento.valor_pagado, 2),
                 "saldo_total": round(evento.valor_participacion, 2),
                 "aceptado": aceptado,
@@ -575,7 +648,9 @@ def pagar_actividad_evento(request):
         
         # Buscamos por medio de la actividad, el valor de participación a pagar.
         try:
-            # Primero validemos si es participante (deudor)
+            # Primero validemos si es participante (deudor) y no quiere pagarle a nadie más.
+            if request.data["email_contacto"]:
+                raise ParticipantesEventoActividad.DoesNotExist()
             eventosActividades = ParticipantesEventoActividad.objects.get(id_actividad=actividad, id_participante=user)
         except ParticipantesEventoActividad.DoesNotExist:
             # En caso de que no sea participante (deudor), averiguemos si es el creador de la actividad (prestador)
@@ -585,9 +660,14 @@ def pagar_actividad_evento(request):
                 return Response({"error": True, "error_cause": "User cannot pay the bill, due to it isn't neither the owner nor participant!"}, status=status.HTTP_400_BAD_REQUEST)
             # Si es el dueño de la actividad y va a realizar el pago, entonces debemos obtener 
             # obligatoriamente los datos de "ParticipantesEventoActividad", para pagar sobre 
-            # el valor de la participación.
+            # el valor de la participación. Además hay que conocer a quien le vamos a ayudar a pagar.
             try:
-                eventosActividades = ParticipantesEventoActividad.objects.get(id_actividad=actividad, id_evento=actividad.evento)
+                participant = User.objects.get(email=request.data["email_contacto"])
+            except User.DoesNotExist:
+                return Response({"error": True, "error_cause": "Participant doesn't exist!"}, status=status.HTTP_404_NOT_FOUND)
+
+            try:
+                eventosActividades = ParticipantesEventoActividad.objects.get(id_actividad=actividad, id_participante=participant, id_evento=actividad.id_evento)
             except ParticipantesEventoActividad.DoesNotExist:
                 return Response({"error": True, "error_cause": "User cannot pay the bill, due to it isn't neither the owner nor participant!"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -614,6 +694,65 @@ def pagar_actividad_evento(request):
     else:
         return Response({"error": True, "error_cause": 'Invalid request method!'}, status=status.HTTP_400_BAD_REQUEST) 
 
+
+# Vista para mostrar todas las actividades de todos los eventos que el usuario ha creado.
+
+@api_view(['GET']) # Es un decorador que me sirve para renderizar en pantalla la vista basada en función.
+@authentication_classes([TokenAuthentication]) # Me sirve para permitir autenticación por token para acceder a este método.
+@permission_classes([IsAuthenticated])
+def ver_actividades_todas_eventos(request):
+    if request.method == 'GET':
+        # Obtenemos al usuario por medio de su token
+        try:
+            user = Token.objects.get(key=request.auth.key).user
+        except Token.DoesNotExist:
+            return Response({"error": True, "error_cause": 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Buscamos los eventos creados por el usuario
+        try:
+            eventos_creados = Evento.objects.filter(id_usuario=user) 
+        except Evento.DoesNotExist:
+            print("User hasn't created events yet!")
+        
+        # Variable auxiliar para almacenar todos los eventos creados por el usuario
+        lista_eventos_creados = []
+
+        # Ahora guardamos los eventos que fueron creados por el mismo.
+        for evento in eventos_creados:
+            # Averiguamos cuales son las actividades asignadas para dicho evento
+            # Validamos si tiene actividades asociadas. 
+            # si no tiene se deja un espacio vacío
+            try:
+                evento_actividades = ParticipantesEventoActividad.objects.filter(id_evento=evento) 
+                print("evento_actividades:", evento_actividades)
+                if len(evento_actividades) > 0:
+                    for event_act in evento_actividades:
+                        accepted = "No"
+                        if event_act.aceptado:
+                            accepted = "Yes"
+                        evento_actividad = {
+                            "evento": event_act.id_evento.nombre,
+                            "evento_tipo": event_act.id_evento.tipo,
+                            "evento_foto": event_act.id_evento.foto,
+                            "evento_creador": event_act.id_evento.id_usuario.username,
+                            "email_participante": event_act.id_participante.email,
+                            "usuario_participante": event_act.id_participante.username,
+                            "actividad": event_act.id_actividad.descripcion,
+                            "actividad_email_propietario": event_act.id_actividad.id_usuario.email,
+                            "actividad_usuario_propietario": event_act.id_actividad.id_usuario.username,
+                            "actividad_valor": round(event_act.id_actividad.valor, 2),
+                            "aceptado": accepted
+                        }
+                        lista_eventos_creados.append(evento_actividad)
+            except Evento.DoesNotExist:
+                print(f"This event hasn't activities assigned yet: {evento.nombre}")
+        if len(lista_eventos_creados) > 0:
+            eventos_actividades_data = { "eventos_creados": lista_eventos_creados, "message": "Ok!" }
+            return Response(eventos_actividades_data, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": True, "error_cause": "User hasn't created any event yet!"}, status=status.HTTP_404_NOT_FOUND) 
+    else:
+        return Response({"error": True, "error_cause": 'Invalid request method!'}, status=status.HTTP_400_BAD_REQUEST) 
 
 # --------------------------------------------------------------------------------
 # Gestión de actividades
@@ -726,8 +865,10 @@ def ver_actividades_evento(request):
         for actividad in actividades:
             activity = {
                 "actividad_descripcion": actividad.descripcion,
-                "actividad_valor": round(actividad.valor, 2),
+                "actividad_usuario_propietario": actividad.id_usuario.username,
+                "actividad_valor": actividad.valor,
                 "evento": actividad.id_evento.nombre,
+                "evento_creador": actividad.id_evento.id_usuario.username,
                 "evento_tipo": actividad.id_evento.tipo,
             }
             lista_actividades.append(activity)
@@ -800,15 +941,19 @@ def agregar_contacto_actividad(request):
         except Evento.DoesNotExist:
             return Response({"error": True, "error_cause": "User hasn't created this event: {event}".format(event=actividad.id_evento.nombre)}, status=status.HTTP_404_NOT_FOUND)
 
-        # Busquemos al contacto que queremos asignar
+        # Busquemos al contacto que queremos asignar (también puede el dueño asignarse a si mismo)
         try:
-            contact = User.objects.get(email=request.data["email_contacto"])
+            if request.data["email_contacto"]:
+                contact = User.objects.get(email=request.data["email_contacto"])
+            else:
+                contact = user
         except User.DoesNotExist:
             return Response({"error":True, "error_cause":"Contact doesn't exist!"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Validemos que efectivamente sea contacto del dueño del evento.
+        # Si asignamos a un contacto, validemos que efectivamente sea contacto del dueño del evento.
         try:
-            contacto_asignar = Contactos.objects.get(usuario=user, contacto=contact)
+            if request.data["email_contacto"]:
+                contacto_asignar = Contactos.objects.get(usuario=user, contacto=contact)
         except Contactos.DoesNotExist:
             return Response({"error":True, "error_cause":"User hasn't this contact aggregated yet!"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -996,11 +1141,11 @@ def obtener_datos_dashboard(request):
 
     # Variable auxiliar para guardar todas las actividades en las que el usuario participa.
     total_saldos_pendientes = 0
-    cantidad_eventos_participante = 0
+    cantidad_actividades_participante = 0
 
     # Ahora guardamos las actividades en las que el usuario participa, junto con su saldo pendiente.
     for evento in eventos_participante:
-        cantidad_eventos_participante += 1
+        cantidad_actividades_participante += 1
         total_saldos_pendientes += evento.valor_participacion - evento.valor_pagado
 
     # Guardamos toda la información en un objeto JSON
@@ -1008,7 +1153,7 @@ def obtener_datos_dashboard(request):
         "cantidad_contactos": cantidad_contactos["contacto__count"],
         "cantidad_eventos_creados": cantidad_eventos_creados["nombre__count"],
         "total_saldos_pendientes": round(total_saldos_pendientes, 2),
-        "cantidad_eventos_participante": cantidad_eventos_participante,
+        "cantidad_actividades_participante": cantidad_actividades_participante,
     }
 
     return Response({"error":False, "description": dashboard_data}, status=status.HTTP_200_OK)

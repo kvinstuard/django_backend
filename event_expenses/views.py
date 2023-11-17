@@ -740,6 +740,7 @@ def ver_participantes_todos_eventos(request):
                             "actividad": event_act.id_actividad.descripcion,
                             "actividad_email_propietario": event_act.id_actividad.id_usuario.email,
                             "actividad_usuario_propietario": event_act.id_actividad.id_usuario.username,
+                            "valor_participacion": event_act.valor_participacion,
                             "actividad_valor": round(event_act.id_actividad.valor, 2),
                             "aceptado": accepted
                         }

@@ -47,6 +47,8 @@ urlpatterns = [
           views.agregar_contacto, name="agregar_contacto"),
      path("eliminar/contacto/", 
           views.eliminar_contacto, name="eliminar_contacto"),
+     path('list/pending-balance/contacts/', 
+          views.listar_saldos_pendientes_contactos, name="listar_saldos_pendientes_contactos"),
      # Gestión de eventos
      path('crear/evento/', 
           views.crear_evento, name="crear_evento"),
@@ -56,11 +58,28 @@ urlpatterns = [
           views.ver_saldos_pendientes, name="ver_saldos_pendientes"),
      path('update/event/', 
           views.modificar_evento, name="modificar_evento"),
-     path('view/activities/event/',
-          views.ver_actividades_evento, name="ver_actividades_evento"),
+     path('pay/activity-event/', 
+          views.pagar_actividad_evento, name="pagar_actividad_evento"),
+     path('view/all-activities-event/', 
+          views.ver_actividades_todas_eventos, name="ver_actividades_todas_eventos"),
      # Gestión de actividades
      path('create/activity/', 
           views.crear_actividad, name="crear_actividad"),
      path('delete/activity/', 
-          views.quitar_actividad, name="quitar_actividad"),
+          views.quitar_actividad, name="quitar_actividad"),  
+     path('view/activities/event/',
+          views.ver_actividades_evento, name="ver_actividades_evento"),
+     path('modify/activity/', 
+          views.modificar_actividad, name="modificar_actividad"), 
+     path('add/contact/activity/', 
+          views.agregar_contacto_actividad, name="agregar_contacto_actividad"),  
+     path('remove/contact/activity/', 
+          views.quitar_contacto_actividad, name="quitar_contacto_actividad"),  
+     path('accept/activity/', 
+          views.aceptar_invitacion_actividad, name="aceptar_invitacion_actividad"),  
+     # Dashboard
+     path('dashboard/data/', 
+          views.obtener_datos_dashboard, name="obtener_datos_dashboard"),  
+       
+          
 ]

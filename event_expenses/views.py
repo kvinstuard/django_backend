@@ -804,7 +804,7 @@ def ver_solo_actividades_todas_eventos(request):
             eventos_actividades_data = { "eventos_creados": lista_eventos_creados, "message": "Ok!" }
             return Response(eventos_actividades_data, status=status.HTTP_200_OK)
         else:
-            return Response({"error": True, "error_cause": "User hasn't created any event yet!"}, status=status.HTTP_404_NOT_FOUND) 
+            return Response({"error": False, "eventos_creados": [], "error_cause": "User hasn't created any event yet!"}, status=status.HTTP_404_NOT_FOUND) 
     else:
         return Response({"error": True, "error_cause": 'Invalid request method!'}, status=status.HTTP_400_BAD_REQUEST) 
 

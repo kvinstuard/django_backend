@@ -69,3 +69,14 @@ def test_crear_participante_evento_actividad():
     )
     assert participante_evento_actividad.id_actividad.descripcion == 'Actividad de prueba'
     assert participante_evento_actividad.valor_participacion == 30
+
+
+@pytest.mark.django_db
+def test_create_user_usuario_detalles_signal():
+    # Crear un nuevo usuario
+    user = User.objects.create(username='testuser', email='test@example.com', password='password123')
+    assert User.objects.filter(username='testuser').exists()
+    assert Usuario.objects.filter(user=user).exists()
+
+    usuario_detalles = Usuario.objects.get(user=user)
+    assert usuario_detalles.foto is None

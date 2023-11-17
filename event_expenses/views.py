@@ -695,12 +695,12 @@ def pagar_actividad_evento(request):
         return Response({"error": True, "error_cause": 'Invalid request method!'}, status=status.HTTP_400_BAD_REQUEST) 
 
 
-# Vista para mostrar todas las actividades de todos los eventos que el usuario ha creado.
+# Vista para mostrar todos los contactos que participan en los eventos creados por el usuario.
 
 @api_view(['GET']) # Es un decorador que me sirve para renderizar en pantalla la vista basada en función.
 @authentication_classes([TokenAuthentication]) # Me sirve para permitir autenticación por token para acceder a este método.
 @permission_classes([IsAuthenticated])
-def ver_actividades_todas_eventos(request):
+def ver_participantes_todos_eventos(request):
     if request.method == 'GET':
         # Obtenemos al usuario por medio de su token
         try:
@@ -742,6 +742,59 @@ def ver_actividades_todas_eventos(request):
                             "actividad_usuario_propietario": event_act.id_actividad.id_usuario.username,
                             "actividad_valor": round(event_act.id_actividad.valor, 2),
                             "aceptado": accepted
+                        }
+                        lista_eventos_creados.append(evento_actividad)
+            except Evento.DoesNotExist:
+                print(f"This event hasn't activities assigned yet: {evento.nombre}")
+        if len(lista_eventos_creados) > 0:
+            eventos_actividades_data = { "eventos_creados": lista_eventos_creados, "message": "Ok!" }
+            return Response(eventos_actividades_data, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": True, "error_cause": "User hasn't created any event yet!"}, status=status.HTTP_404_NOT_FOUND) 
+    else:
+        return Response({"error": True, "error_cause": 'Invalid request method!'}, status=status.HTTP_400_BAD_REQUEST) 
+
+# Vista para mostrar todas las actividades de todos los eventos que el usuario ha creado.
+
+@api_view(['GET']) # Es un decorador que me sirve para renderizar en pantalla la vista basada en función.
+@authentication_classes([TokenAuthentication]) # Me sirve para permitir autenticación por token para acceder a este método.
+@permission_classes([IsAuthenticated])
+def ver_solo_actividades_todas_eventos(request):
+    if request.method == 'GET':
+        # Obtenemos al usuario por medio de su token
+        try:
+            user = Token.objects.get(key=request.auth.key).user
+        except Token.DoesNotExist:
+            return Response({"error": True, "error_cause": 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Buscamos los eventos creados por el usuario
+        try:
+            eventos_creados = Evento.objects.filter(id_usuario=user) 
+        except Evento.DoesNotExist:
+            print("User hasn't created events yet!")
+        
+        # Variable auxiliar para almacenar todos los eventos creados por el usuario
+        lista_eventos_creados = []
+
+        # Ahora guardamos los eventos que fueron creados por el mismo.
+        for evento in eventos_creados:
+            # Averiguamos cuales son las actividades asignadas para dicho evento
+            # Validamos si tiene actividades asociadas. 
+            # si no tiene se deja un espacio vacío
+            try:
+                actividades = Actividades.objects.filter(id_evento=evento) 
+                print("actividades:", actividades)
+                if len(actividades) > 0:
+                    for actividad in actividades:
+                        evento_actividad = {
+                            "evento": actividad.id_evento.nombre,
+                            "evento_tipo": actividad.id_evento.tipo,
+                            "evento_foto": actividad.id_evento.foto,
+                            "evento_creador": actividad.id_evento.id_usuario.username,
+                            "actividad": actividad.descripcion,
+                            "actividad_email_propietario": actividad.id_usuario.email,
+                            "actividad_usuario_propietario": actividad.id_usuario.username,
+                            "actividad_valor": round(actividad.valor, 2),
                         }
                         lista_eventos_creados.append(evento_actividad)
             except Evento.DoesNotExist:

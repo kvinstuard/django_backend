@@ -412,7 +412,7 @@ def listar_saldos_pendientes_contactos(request):
     for contacto in contactos:
         # Buscamos los eventos en los que participa el contacto
         try:
-            eventos_participante = ParticipantesEventoActividad.objects.filter(id_participante=contacto.contacto) 
+            eventos_participante = ParticipantesEventoActividad.objects.filter(id_participante=contacto.contacto, aceptado = True) 
         except Evento.DoesNotExist:
             print("User isn't participant of events yet!")
 
@@ -552,7 +552,7 @@ def ver_saldos_pendientes(request):
         
         # Buscamos los eventos en los que participa el usuario
         try:
-            eventos_participante = ParticipantesEventoActividad.objects.filter(id_participante=user) 
+            eventos_participante = ParticipantesEventoActividad.objects.filter(id_participante=user, aceptado = True) 
         except Evento.DoesNotExist:
             print("User isn't participant of events yet!")
 

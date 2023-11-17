@@ -62,7 +62,7 @@ def test_login_user(api_client):
     url = reverse('login_user')
     data = {
         "email": user.email,
-        "password": user.password,
+        "password": "password123",
         'key': 'value'
     }
     response = api_client.post(url, data, format='json')

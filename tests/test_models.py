@@ -64,7 +64,7 @@ def test_crear_participante_evento_actividad():
     participante_evento_actividad = ParticipantesEventoActividad.objects.create(
         id_actividad=actividad,
         id_evento=evento,
-        id_participante=participante,
+        id_participante=participante.usuario,
         valor_participacion=30
     )
     assert participante_evento_actividad.id_actividad.descripcion == 'Actividad de prueba'

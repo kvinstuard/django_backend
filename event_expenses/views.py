@@ -652,7 +652,7 @@ def pagar_actividad_evento(request):
             if request.data["email_contacto"]:
                 raise ParticipantesEventoActividad.DoesNotExist()
             try: 
-                eventosActividades = ParticipantesEventoActividad.objects.get(id_actividad=actividad, id_participante=user, aceptado = True)
+                eventosActividades = ParticipantesEventoActividad.objects.get(id_actividad=actividad, id_participante=user)
             except ParticipantesEventoActividad.DoesNotExist:    
                 return Response({"error": True, "error_cause": "User cannot pay the bill, due to it isn't neither the owner nor participant, or it's not currently accepted!"}, status=status.HTTP_400_BAD_REQUEST)
         except ParticipantesEventoActividad.DoesNotExist:

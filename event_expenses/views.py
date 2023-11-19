@@ -651,7 +651,10 @@ def pagar_actividad_evento(request):
             # Primero validemos si es participante (deudor) y no quiere pagarle a nadie más.
             if request.data["email_contacto"]:
                 raise ParticipantesEventoActividad.DoesNotExist()
-            eventosActividades = ParticipantesEventoActividad.objects.get(id_actividad=actividad, id_participante=user)
+            try: 
+                eventosActividades = ParticipantesEventoActividad.objects.get(id_actividad=actividad, id_participante=user, aceptado = True)
+            except ParticipantesEventoActividad.DoesNotExist:    
+                return Response({"error": True, "error_cause": "User cannot pay the bill, due to it isn't neither the owner nor participant, or it's not currently accepted!"}, status=status.HTTP_400_BAD_REQUEST)
         except ParticipantesEventoActividad.DoesNotExist:
             # En caso de que no sea participante (deudor), averiguemos si es el creador de la actividad (prestador)
             if actividad.id_usuario == user:
@@ -667,9 +670,9 @@ def pagar_actividad_evento(request):
                 return Response({"error": True, "error_cause": "Participant doesn't exist!"}, status=status.HTTP_404_NOT_FOUND)
 
             try:
-                eventosActividades = ParticipantesEventoActividad.objects.get(id_actividad=actividad, id_participante=participant, id_evento=actividad.id_evento)
+                eventosActividades = ParticipantesEventoActividad.objects.get(id_actividad=actividad, id_participante=participant, id_evento=actividad.id_evento, aceptado = False)
             except ParticipantesEventoActividad.DoesNotExist:
-                return Response({"error": True, "error_cause": "User cannot pay the bill, due to it isn't neither the owner nor participant!"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": True, "error_cause": "User cannot pay the bill, due to it isn't neither the owner nor participant, or it's currently accepted!"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Ahora pagamos la actividad
         # El sistema automaticamente asigna el valor de participacion como valor pagado si el pago 
@@ -1109,9 +1112,9 @@ def quitar_contacto_actividad(request):
 
     # Validamos que efectivamente el contacto esté asignado a la actividad.
     try:    
-        eventosActividades = ParticipantesEventoActividad.objects.get(id_actividad=actividad, id_evento=actividad.id_evento, id_participante=contact)
+        eventosActividades = ParticipantesEventoActividad.objects.get(id_actividad=actividad, id_evento=actividad.id_evento, id_participante=contact, aceptado = False)
     except ParticipantesEventoActividad.DoesNotExist:
-        return Response({"error":True, "error_cause":"User isn't participant of this activity!"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error":True, "error_cause":"User isn't participant of this activity or it's already accepted!"}, status=status.HTTP_400_BAD_REQUEST)
 
     # Se desvincula al usuario de la actividad
     eventosActividades.delete()

@@ -609,8 +609,9 @@ def modificar_evento(request):
         
         # Validamos que el evento no tenga actividades asociadas
         try:
-            actividades = Actividades.objects.get(id_evento=evento)
-            return Response({"error": True, "error_cause": "There's one activity: {act}, in this event: {event}".format(act=actividades.descripcion,event=evento.nombre)}, status=status.HTTP_404_NOT_FOUND)
+            actividades = Actividades.objects.filter(id_evento=evento)
+            if len(actividades) > 0:
+                return Response({"error": True, "error_cause": "There's one activity: {act}, in this event: {event}".format(act=actividades[0].descripcion,event=evento.nombre)}, status=status.HTTP_404_NOT_FOUND)
         except Actividades.DoesNotExist:
             print("There're no activities in this event!, we can continue...")
 

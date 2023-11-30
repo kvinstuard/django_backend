@@ -425,6 +425,7 @@ def listar_saldos_pendientes_contactos(request):
                 "contacto": contacto.contacto.username,
                 "evento": evento.id_evento.nombre,
                 "evento_tipo": evento.id_evento.tipo,
+                "evento_descripcion": evento.id_evento.descripcion,
                 "actividad": evento.id_actividad.descripcion,
                 "actividad_email_propietario": evento.id_actividad.id_usuario.email,
                 "actividad_usuario_propietario": evento.id_actividad.id_usuario.username,
@@ -483,6 +484,7 @@ def ver_eventos_actividades_usuario(request):
                         evento_actividad = {
                             "evento": event_act.id_evento.nombre,
                             "evento_tipo": event_act.id_evento.tipo,
+                            "evento_descripcion": event_act.id_evento.descripcion,
                             "evento_foto": event_act.id_evento.foto,
                             "evento_creador": event_act.id_evento.id_usuario.username,
                             "email_participante": event_act.id_participante.email,
@@ -497,6 +499,7 @@ def ver_eventos_actividades_usuario(request):
                     evento_actividad = {
                         "evento": evento.nombre,
                         "evento_tipo": evento.tipo,
+                        "evento_descripcion": evento.descripcion,
                         "evento_foto": evento.foto,
                         "evento_creador": evento.id_usuario.username,
                         "actividad": "",
@@ -517,6 +520,7 @@ def ver_eventos_actividades_usuario(request):
             evento_actividad = {
                 "evento": evento.id_evento.nombre,
                 "evento_tipo": evento.id_evento.tipo,
+                "evento_descripcion": evento.id_evento.descripcion,
                 "evento_foto": evento.id_evento.foto,
                 "evento_creador": evento.id_evento.id_usuario.username,
                 "email_participante": evento.id_participante.email,
@@ -567,6 +571,7 @@ def ver_saldos_pendientes(request):
             evento_actividad = {
                 "evento": evento.id_evento.nombre,
                 "evento_tipo": evento.id_evento.tipo,
+                "evento_descripcion": evento.id_evento.descripcion,
                 "actividad": evento.id_actividad.descripcion,
                 "actividad_email_propietario": evento.id_actividad.id_usuario.email,
                 "actividad_usuario_propietario": evento.id_actividad.id_usuario.username,
@@ -737,6 +742,7 @@ def ver_participantes_todos_eventos(request):
                         evento_actividad = {
                             "evento": event_act.id_evento.nombre,
                             "evento_tipo": event_act.id_evento.tipo,
+                            "evento_descripcion": event_act.id_evento.descripcion,
                             "evento_foto": event_act.id_evento.foto,
                             "evento_creador": event_act.id_evento.id_usuario.username,
                             "email_participante": event_act.id_participante.email,
@@ -787,13 +793,14 @@ def ver_solo_actividades_todas_eventos(request):
             # Validamos si tiene actividades asociadas. 
             # si no tiene se deja un espacio vacío
             try:
-                actividades = Actividades.objects.filter(id_evento=evento) 
+                actividades = Actividades.objects.filter(id_evento=evento, id_usuario=user) 
                 print("actividades:", actividades)
                 if len(actividades) > 0:
                     for actividad in actividades:
                         evento_actividad = {
                             "evento": actividad.id_evento.nombre,
                             "evento_tipo": actividad.id_evento.tipo,
+                            "evento_descripcion": actividad.id_evento.descripcion,
                             "evento_foto": actividad.id_evento.foto,
                             "evento_creador": actividad.id_evento.id_usuario.username,
                             "actividad": actividad.descripcion,
@@ -928,6 +935,7 @@ def ver_actividades_evento(request):
                 "evento": actividad.id_evento.nombre,
                 "evento_creador": actividad.id_evento.id_usuario.username,
                 "evento_tipo": actividad.id_evento.tipo,
+                "evento_descripcion": actividad.id_evento.descripcion,
             }
             lista_actividades.append(activity)
 

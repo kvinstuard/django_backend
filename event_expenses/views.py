@@ -973,6 +973,34 @@ def modificar_actividad(request):
         serializer = ActividadesSerializer(actividad, data=request.data, many=False)
         if serializer.is_valid():
             serializer.save()
+
+            # Una vez se modifica la actividad se valida si los valores de participación fueron 
+            # negociados como porcentaje o valor fijo: 
+            # - si son % se hace el ajuste del valor de participación de cada participante.
+            # - si es un valor fijo, se hace la resta valor_actividad - sumatoria(valores de participación) 
+            # y lo que sobre de ahí el creador de la actividad, quien es el que paga asume esos gastos.
+            try:
+                participantes_actividad = ParticipantesEventoActividad.objects.filter(id_actividad = actividad)
+            except ParticipantesEventoActividad.DoesNotExist:
+                print("There're no participants in this activity yet!")
+
+            sumatoria_valores_participación = 0
+            for participante_actividad in participantes_actividad:
+                if participante_actividad.valor_participacion_porcentaje:
+                    # se ajusta el valor de la participación
+                    participante_actividad.valor_participacion = actividad.valor * participante_actividad.valor_participacion_porcentaje
+                    # si el valor de participación es menor que el valor pagado, el credor debe devolver lo que pagó
+                    if participante_actividad.valor_pagado > participante_actividad.valor_participacion:
+                        participante_actividad.valor_pagado = participante_actividad.valor_participacion
+                    participante_actividad.save()
+                # hallamos la sumatoria del valor de participación de cada participante
+                sumatoria_valores_participación += participante_actividad.valor_participacion
+            # Se valida que la suma de los valores de participación no excedan el valor de la actividad
+            if sumatoria_valores_participación > actividad.valor:
+                return Response({"error":True, "error_cause":"Sum of participation's values: {p_val}, is greater than activity's value: {act_val}!".format(
+                            p_val = sumatoria_valores_participación, 
+                            act_val = actividad.valor, )}, 
+                        status=status.HTTP_400_BAD_REQUEST)
             return Response(serializer.data, status=status.HTTP_200_OK)
         else:
             return Response({"error":True, "error_cause":serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
@@ -1027,8 +1055,10 @@ def agregar_contacto_actividad(request):
         # si es porcentaje se calcula su valor númerico equivalente.
         if request.data["valor_participacion"] > 0 and request.data["valor_participacion"] <= 1:
             valor_participacion_contacto = round(actividad.valor * Decimal(request.data["valor_participacion"]), 2)
+            valor_porcentual = request.data["valor_participacion"]
         else:
             valor_participacion_contacto = round(request.data["valor_participacion"], 2)
+            valor_porcentual = None
 
         # Validemos que el valor de participación del contacto no supere el valor total de la actividad
         if valor_participacion_contacto > actividad.valor:
@@ -1062,7 +1092,8 @@ def agregar_contacto_actividad(request):
             id_actividad = actividad,
             id_evento = actividad.id_evento,
             id_participante = contact,
-            valor_participacion = round(valor_participacion_contacto, 2)
+            valor_participacion = round(valor_participacion_contacto, 2),
+            valor_participacion_porcentaje = round(valor_porcentual, 2)
         )
         eventosActividades.save()
         serializer = ParticipantesSerializer(eventosActividades, many=False)

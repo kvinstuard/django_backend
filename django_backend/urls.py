@@ -64,6 +64,14 @@ urlpatterns = [
           views.ver_participantes_todos_eventos, name="ver_actividades_todas_eventos"),
      path('view/all-activities-event/', 
           views.ver_solo_actividades_todas_eventos, name="ver_solo_actividades_todas_eventos"),
+     path('add/contact/event/', 
+          views.agregar_contacto_evento, name="agregar_contacto_evento"),
+     path('accept/invitation/', 
+          views.aceptar_invitacion, name="aceptar_invitacion"),  
+     path('view/your/invitations/',
+          views.ver_tus_invitaciones_pendientes, name="ver_invitaciones_pendientes"),  
+     path('view/sent/invitations/',
+          views.ver_invitaciones_pendientes, name="ver_invitaciones_pendientes"),  
      # Gestión de actividades
      path('create/activity/', 
           views.crear_actividad, name="crear_actividad"),
@@ -77,8 +85,6 @@ urlpatterns = [
           views.agregar_contacto_actividad, name="agregar_contacto_actividad"),  
      path('remove/contact/activity/', 
           views.quitar_contacto_actividad, name="quitar_contacto_actividad"),  
-     path('accept/activity/', 
-          views.aceptar_invitacion_actividad, name="aceptar_invitacion_actividad"),  
      # Dashboard
      path('dashboard/data/', 
           views.obtener_datos_dashboard, name="obtener_datos_dashboard"),  

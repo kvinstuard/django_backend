@@ -412,7 +412,7 @@ def listar_saldos_pendientes_contactos(request):
     for contacto in contactos:
         # Buscamos los eventos en los que participa el contacto
         try:
-            eventos_participante = ParticipantesEventoActividad.objects.filter(id_participante=contacto.contacto) 
+            eventos_participante = ParticipantesEventoActividad.objects.filter(id_participante=contacto.contacto, id_actividad__isnull=False) 
         except Evento.DoesNotExist:
             print("User isn't participant of events yet!")
 
@@ -477,7 +477,7 @@ def ver_eventos_actividades_usuario(request):
             # Validamos si tiene actividades asociadas. 
             # si no tiene se deja un espacio vacío
             try:
-                evento_actividades = ParticipantesEventoActividad.objects.filter(id_evento=evento) 
+                evento_actividades = ParticipantesEventoActividad.objects.filter(id_evento=evento, id_actividad__isnull=False) 
                 print("evento_actividades:", evento_actividades)
                 if len(evento_actividades) > 0:
                     for event_act in evento_actividades:
@@ -511,7 +511,7 @@ def ver_eventos_actividades_usuario(request):
         
         # Buscamos los eventos en los que participa el usuario.
         try:
-            eventos_participante = ParticipantesEventoActividad.objects.filter(id_participante=user) 
+            eventos_participante = ParticipantesEventoActividad.objects.filter(id_participante=user, id_actividad__isnull=False) 
         except Evento.DoesNotExist:
             print("User isn't participant of events yet!")
 
@@ -556,7 +556,7 @@ def ver_saldos_pendientes(request):
         
         # Buscamos los eventos en los que participa el usuario
         try:
-            eventos_participante = ParticipantesEventoActividad.objects.filter(id_participante=user) 
+            eventos_participante = ParticipantesEventoActividad.objects.filter(id_participante=user, id_actividad__isnull=False) 
         except Evento.DoesNotExist:
             print("User isn't participant of events yet!")
 
@@ -732,7 +732,7 @@ def ver_participantes_todos_eventos(request):
             # Validamos si tiene actividades asociadas. 
             # si no tiene se deja un espacio vacío
             try:
-                evento_actividades = ParticipantesEventoActividad.objects.filter(id_evento=evento) 
+                evento_actividades = ParticipantesEventoActividad.objects.filter(id_evento=evento, id_actividad__isnull=False) 
                 print("evento_actividades:", evento_actividades)
                 if len(evento_actividades) > 0:
                     for event_act in evento_actividades:
@@ -1160,27 +1160,27 @@ def quitar_contacto_actividad(request):
     eventosActividades.delete()
     return Response({"error":False, "message":"User deleted sucessfully from activity!"}, status=status.HTTP_200_OK)
 
-# Vista para aceptar participar de una actividad
+# Vista para aceptar participar de un evento
 
 @api_view(['POST']) # Es un decorador que me sirve para renderizar en pantalla la vista basada en función.
 @authentication_classes([TokenAuthentication]) # Me sirve para permitir autenticación por token para acceder a este método.
 @permission_classes([IsAuthenticated])
-def aceptar_invitacion_actividad(request):
+def aceptar_invitacion(request):
     # Obtenemos al usuario por medio de su token
     try:
         user = Token.objects.get(key=request.auth.key).user
     except Token.DoesNotExist:
         return Response({"error": True, "error_cause": 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
 
-    # Buscamos la actividad a la que fue invitado por su descripcion
+    # Validamos que el usuario sea el dueño del evento a buscar.
     try:
-        actividad = Actividades.objects.get(descripcion=request.data["descripcion"])
-    except Actividades.DoesNotExist:
-        return Response({"error": True, "error_cause": "Activity doesn't exist"}, status=status.HTTP_404_NOT_FOUND)
-    
+        evento = Evento.objects.get(nombre=request.data["nombre"])
+    except Evento.DoesNotExist:
+        return Response({"error": True, "error_cause": "User hasn't created this event: {event}".format(event=request.data["nombre"])}, status=status.HTTP_404_NOT_FOUND)
+
     # Validamos que efectivamente es participante de esa actividad
     try:
-        eventosActividades = ParticipantesEventoActividad.objects.get(id_actividad=actividad, id_participante=user)
+        eventosActividades = ParticipantesEventoActividad.objects.get(id_evento=evento, id_participante=user)
     except ParticipantesEventoActividad.DoesNotExist:
         return Response({"error": True, "error_cause": "User cannot accept because isn't participant!"}, status=status.HTTP_400_BAD_REQUEST)
     
@@ -1195,6 +1195,160 @@ def aceptar_invitacion_actividad(request):
     serializer = ParticipantesSerializer(eventosActividades, many=False)
 
     return Response({"error":False, "description": serializer.data, "message": "Accepted!"}, status=status.HTTP_200_OK)
+
+# Vista para agregar un contacto a un evento
+
+@api_view(['POST']) # Es un decorador que me sirve para renderizar en pantalla la vista basada en función.
+@authentication_classes([TokenAuthentication]) # Me sirve para permitir autenticación por token para acceder a este método.
+@permission_classes([IsAuthenticated])
+def agregar_contacto_evento(request):
+    if request.method == 'POST':
+        # Obtenemos al usuario por medio de su token
+        try:
+            user = Token.objects.get(key=request.auth.key).user
+        except Token.DoesNotExist:
+            return Response({"error": True, "error_cause": 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Validamos que el usuario sea el dueño del evento a buscar.
+        try:
+            evento = Evento.objects.get(id_usuario=user, nombre=request.data["nombre"])
+        except Evento.DoesNotExist:
+            return Response({"error": True, "error_cause": "User hasn't created this event: {event}".format(event=request.data["nombre"])}, status=status.HTTP_404_NOT_FOUND)
+
+        # Busquemos al contacto que queremos asignar
+        try:
+            contact = User.objects.get(email=request.data["email_contacto"])
+        except User.DoesNotExist:
+            return Response({"error":True, "error_cause":"Contact doesn't exist!"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Si asignamos a un contacto, validemos que efectivamente sea contacto del dueño del evento.
+        try:
+            if request.data["email_contacto"]:
+                contacto_asignar = Contactos.objects.get(usuario=user, contacto=contact)
+        except Contactos.DoesNotExist:
+            return Response({"error":True, "error_cause":"User hasn't this contact aggregated yet!"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validemos que el contacto no haya sido invitado aún al evento
+        try:    
+            eventosActividades = ParticipantesEventoActividad.objects.get(id_evento=evento, id_participante=contact, id_actividad__isnull=True)
+            return Response({"error":True, "error_cause":"Contact already invited to this event!"}, status=status.HTTP_400_BAD_REQUEST)
+        except ParticipantesEventoActividad.DoesNotExist:
+            print("Contact not assigned yet!")
+
+        # Asignemos el contacto a la actividad
+        eventosActividades = ParticipantesEventoActividad.objects.create(
+            id_actividad = None,
+            id_evento = evento,
+            id_participante = contact,
+            valor_participacion = None,
+            valor_participacion_porcentaje = None
+        )
+        eventosActividades.save()
+        serializer = ParticipantesSerializer(eventosActividades, many=False)
+
+        return Response({"error":False, "description": serializer.data}, status=status.HTTP_200_OK)
+
+# Esta vista es una variante de ver_saldos_pendientes, pero se usará para identificar invitaciones 
+# a eventos (id_actividad = null)
+
+@api_view(['GET']) # Es un decorador que me sirve para renderizar en pantalla la vista basada en función.
+@authentication_classes([TokenAuthentication]) # Me sirve para permitir autenticación por token para acceder a este método.
+@permission_classes([IsAuthenticated])
+def ver_tus_invitaciones_pendientes(request):
+    if request.method == 'GET':
+        # Obtenemos al usuario por medio de su token
+        try:
+            user = Token.objects.get(key=request.auth.key).user
+        except Token.DoesNotExist:
+            return Response({"error": True, "error_cause": 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Buscamos los eventos a los que fue invitado el usuario
+        try:
+            eventos_participante = ParticipantesEventoActividad.objects.filter(id_participante=user, id_actividad__isnull=True) 
+        except Evento.DoesNotExist:
+            print("User isn't participant of events yet!")
+
+        # Variable auxiliar para guardar todas las actividades en las que el usuario participa.
+        lista_eventos_actividades = []
+
+        # Ahora guardamos las actividades en las que el usuario participa, junto con su saldo pendiente.
+        for evento in eventos_participante:
+            aceptado = "No"
+            if evento.aceptado:
+                aceptado = "Yes"
+            evento_actividad = {
+                "evento": evento.id_evento.nombre,
+                "evento_tipo": evento.id_evento.tipo,
+                "evento_descripcion": evento.id_evento.descripcion,
+                "evento_creador": evento.id_evento.id_usuario.username,
+                "email_participante": evento.id_participante.email,
+                "usuario_participante": evento.id_participante.username,
+                "aceptado": aceptado,
+            }
+            lista_eventos_actividades.append(evento_actividad)
+
+        # Se valida si el usuario participa en algún evento o creó uno.
+        if len(lista_eventos_actividades) > 0:
+            eventos_actividades_data = { "eventos": lista_eventos_actividades, "message": "Ok!" }
+            return Response(eventos_actividades_data, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": True, "error_cause": "User isn't participant of any event yet!"}, status=status.HTTP_404_NOT_FOUND) 
+    else:
+        return Response({"error": True, "error_cause": 'Invalid request method!'}, status=status.HTTP_400_BAD_REQUEST) 
+
+@api_view(['GET']) # Es un decorador que me sirve para renderizar en pantalla la vista basada en función.
+@authentication_classes([TokenAuthentication]) # Me sirve para permitir autenticación por token para acceder a este método.
+@permission_classes([IsAuthenticated])
+def ver_invitaciones_pendientes(request):
+    if request.method == 'GET':
+        # Obtenemos al usuario por medio de su token
+        try:
+            user = Token.objects.get(key=request.auth.key).user
+        except Token.DoesNotExist:
+            return Response({"error": True, "error_cause": 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Buscamos las invitaciones enviadas por el usuario
+        # Para ello primero buscamos los eventos creados por el usuario
+        try:
+            eventos_creados = Evento.objects.filter(id_usuario=user)
+        except Evento.DoesNotExist:
+            return Response({"error": True, "error_cause": "User hasn't created an event yet!"}, status=status.HTTP_404_NOT_FOUND)
+        
+        for evento_creado in eventos_creados:        
+            try:
+                eventos_participante = ParticipantesEventoActividad.objects.filter(id_evento=evento_creado)
+                eventos_participante = eventos_participante.filter(id_actividad__isnull=True)
+            except Evento.DoesNotExist:
+                print("User isn't participant of events yet!")
+
+            # Variable auxiliar para guardar todas las actividades en las que el usuario participa.
+            lista_eventos_actividades = []
+
+            # Ahora guardamos las actividades en las que el usuario participa, junto con su saldo pendiente.
+            for evento in eventos_participante:
+                aceptado = "No"
+                if evento.aceptado:
+                    aceptado = "Yes"
+                evento_actividad = {
+                    "evento": evento.id_evento.nombre,
+                    "evento_tipo": evento.id_evento.tipo,
+                    "evento_descripcion": evento.id_evento.descripcion,
+                    "evento_creador": evento.id_evento.id_usuario.username,
+                    "email_participante": evento.id_participante.email,
+                    "usuario_participante": evento.id_participante.username,
+                    "aceptado": aceptado,
+                }
+                lista_eventos_actividades.append(evento_actividad)
+
+        # Se valida si el usuario participa en algún evento o creó uno.
+        if len(lista_eventos_actividades) > 0:
+            eventos_actividades_data = { "eventos": lista_eventos_actividades, "message": "Ok!" }
+            return Response(eventos_actividades_data, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": True, "error_cause": "User isn't participant of any event yet!"}, status=status.HTTP_404_NOT_FOUND) 
+    else:
+        return Response({"error": True, "error_cause": 'Invalid request method!'}, status=status.HTTP_400_BAD_REQUEST) 
+
 
 # --------------------------------------------------------------------------------
 # Dashboard
@@ -1232,7 +1386,7 @@ def obtener_datos_dashboard(request):
 
     # Buscamos los eventos en los que participa el usuario
     try:
-        eventos_participante = ParticipantesEventoActividad.objects.filter(id_participante=user) 
+        eventos_participante = ParticipantesEventoActividad.objects.filter(id_participante=user, id_actividad__isnull=False) 
     except Evento.DoesNotExist:
         print("User isn't participant of events yet!")
 

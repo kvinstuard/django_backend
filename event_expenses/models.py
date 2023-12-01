@@ -82,7 +82,7 @@ class Actividades(models.Model):
 
 class ParticipantesEventoActividad(models.Model):
     id = models.AutoField(primary_key=True)
-    id_actividad = models.ForeignKey(Actividades, on_delete=models.CASCADE)
+    id_actividad = models.ForeignKey(Actividades, on_delete=models.CASCADE, null=True)
     id_evento = models.ForeignKey(Evento, on_delete=models.CASCADE)
     # Con este campo se sabe también quienes son contactos de un evento.
     id_participante = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -90,14 +90,22 @@ class ParticipantesEventoActividad(models.Model):
     # La idea es siempre mostrar el valor como número, no como porcentaje, solo se permite dar un %
     # al creador para el aporte que dará su contacto, pero el sistema calcula automaticamente el valor
     # númerico y lo asigna.
-    valor_participacion = models.DecimalField(max_digits=20, decimal_places=2)  
-    valor_pagado = models.DecimalField(max_digits=20, decimal_places=2, default=0.0000) 
+    # Si es nulo significa que se hace una invitación al evento
+    valor_participacion = models.DecimalField(max_digits=20, decimal_places=2, null=True)
+    # este campo es para saber si la negociacion de la actividad se hizo con porcentaje o valor fijo
+    # Será un porcentaje que se guardará acá, si es un monto no se guarda nada en esta variable.
+    valor_participacion_porcentaje = models.DecimalField(max_digits=20, decimal_places=2, null=True)
+    # Si es nulo significa que se hace una invitación al evento
+    valor_pagado = models.DecimalField(max_digits=20, decimal_places=2, default=0.0000, null=True)
     # Este campo servirá para validar si el participante aceptó participar 
     aceptado = models.BooleanField(null=False, default=False)
     fecha_aceptacion = models.DateTimeField(null=True)
 
     def __str__(self):
         return f'{self.id_participante} - {self.id_actividad}'
+    
+    class Meta:
+        unique_together = (("id_actividad", "id_evento", "id_participante"),)
 
 
 
